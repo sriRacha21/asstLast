@@ -1,5 +1,6 @@
 #include <unistd.h> 
 #include <stdio.h> 
+#include <stdlib.h>
 #include <sys/socket.h> 
 #include <stdlib.h> 
 #include <netinet/in.h> 
@@ -48,6 +49,7 @@ int main(int argc, char** argv){
     valread = read(new_socket, buffer, 1024);
     printf("%s\n", buffer);
     send(new_socket, hello, strlen(hello), 0);
-    printf("Send hello \n");
+    printf("Hello sent\n");
+
     return 0;
 }
