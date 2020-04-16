@@ -41,15 +41,16 @@ int main(int argc, char** argv){
         exit(EXIT_FAILURE);
     }
 
+    printf("Server started! Waiting for message...\n");
     if((new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addLength)) < 0){
         perror("accept");
         exit(EXIT_FAILURE);
     }
 
-    valread = read(new_socket, buffer, 1024);
-    printf("%s\n", buffer);
-    send(new_socket, hello, strlen(hello), 0);
-    printf("Hello sent\n");
+    // valread = read(new_socket, buffer, 1024);
+    // printf("%s\n", buffer);
+    send(new_socket, "11;abcdefghijk", 17, 0);
+    printf("Manifest sent\n");
 
     return 0;
 }
