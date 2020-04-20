@@ -12,7 +12,7 @@ int main(int argc, char** argv){
     int opt = 1;
     int addLength = sizeof(address);
     char buffer[1024] = {0};
-    char* hello = "Hello from server";
+    char* hello = "11;messageabcd";
 
     //create socket fd
     if((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0){

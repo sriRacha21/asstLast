@@ -4,12 +4,15 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
 #include <fcntl.h>
 #include "definitions.h"
 
 char* readFile(char *filename);
 void writeFile( char *path, char *content );
 void writeFileAppend( int fd, char *content );
+char* readManifestFromSocket(int sock);
+int rwFileFromSocket(int sock);
 
 // read a file and return its contents
 char* readFile(char *filename) {
@@ -69,4 +72,74 @@ void writeFileAppend( int fd, char *content ) {
         bytesWritten = write( fd, content, strlen(content) );
         cursorPosition += bytesWritten;
     } while(bytesWritten > 0 && cursorPosition < strlen(content));
+}
+
+char* readManifestFromSocket(int sock) {
+    // get the size of the file
+    char sizeStr[MAXSIZESIZE];
+    int cursorPosition = 0;
+    int laggingCursorPosition = 0;
+    do {
+        laggingCursorPosition = cursorPosition;
+        cursorPosition += read(sock, &sizeStr[cursorPosition], 1);
+    }
+    while( sizeStr[laggingCursorPosition] != DELIM );
+    sizeStr[laggingCursorPosition] = '\0';
+    // turn the string into unsigned long
+    unsigned long filesize = strtoul(sizeStr, NULL, 10);
+    if( DEBUG ) printf("file size: %lu\n", filesize);
+
+    // read in the rest of the message
+    char* buffer = (char*)malloc(filesize + 1);
+    memset(buffer, '\0', filesize + 1);
+    cursorPosition = 0;
+    int bytesRead = 0;
+    do {
+        bytesRead = read(sock, &buffer[cursorPosition], filesize);
+        cursorPosition += bytesRead;
+    } while( bytesRead > 0 && cursorPosition < filesize);
+
+    return buffer;
+}
+
+int rwFileFromSocket(int sock) {
+    // get the size of the file
+    char sizeStr[MAXSIZESIZE];
+    int cursorPosition = 0;
+    int laggingCursorPosition = 0;
+    do {
+        laggingCursorPosition = cursorPosition;
+        cursorPosition += read(sock, &sizeStr[cursorPosition], 1);
+    }
+    while( sizeStr[laggingCursorPosition] != DELIM );
+    sizeStr[laggingCursorPosition] = '\0';
+    // check if the string received is just "done" so we know to stop receiving
+    if( strcmp(sizeStr,"done") == 0 ) return 1;
+    // turn the string into unsigned long
+    unsigned long filesize = strtoul(sizeStr, NULL, 10);
+    if( DEBUG ) printf("file size: %lu\n", filesize);
+    // get the file path
+    char filenameStr[MAXSIZESIZE];
+    cursorPosition = 0;
+    laggingCursorPosition = 0;
+    do {
+        laggingCursorPosition = cursorPosition;
+        cursorPosition += read(sock, &filenameStr[cursorPosition], 1);
+    } while( filenameStr[cursorPosition] != DELIM );
+    filenameStr[laggingCursorPosition] = '\0';
+    // read in the rest of the message
+    char* buffer = (char*)malloc(filesize + 1);
+    memset(buffer, '\0', filesize+1);
+    cursorPosition = 0;
+    int bytesRead = 0;
+    do {
+        bytesRead = read(sock, &buffer[cursorPosition], filesize);
+        cursorPosition += bytesRead;
+    } while( bytesRead > 0 && cursorPosition < filesize);
+    // write out the file to the path
+    writeFile(filenameStr, buffer);
+    // free the buffer
+    free(buffer);
+    // return success
+    return 0;
 }

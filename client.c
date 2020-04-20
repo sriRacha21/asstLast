@@ -21,10 +21,6 @@
 #define FALSE 0
 #define TRUE 1
 #define PORT 8080
-// maximum length of string that represents filesize
-#define MAXSIZESIZE 11
-// delim for separating filesize and file contents
-#define DELIM ';'
 
 // prototypes
 void stopped();
@@ -96,9 +92,8 @@ int main( int argc, char** argv ) {
         fatalError("Too few or too many arguments.");
     if( strcmp(argv[1],"checkout") == 0 ) checkout( argc, argv );
 
-    // send(sock, "Hello from client", 18, 0);
-    // valread = read(sock, buffer, 1024);
-    // printf("%s\n", buffer);
+    // free
+    free(configurationFile);
 
     return 0;
 }
@@ -130,37 +125,16 @@ void checkout( int argc, char** argv ) {
     // tell server we need the manifest, assume send is blocking
     send(sock, "manifest", 9, 0);
     // read a response from the server
-    // first, declare a variable to hold the beginning integer that represents the size of the file
-    char manifestSizeStr[MAXSIZESIZE];
-    int cursorPosition = 0;
-    int laggingCursorPosition = 0;
-    do {
-        laggingCursorPosition = cursorPosition;
-        cursorPosition += read(sock, &manifestSizeStr[cursorPosition], 1);
-    }
-    while( manifestSizeStr[laggingCursorPosition] != DELIM );
-    manifestSizeStr[laggingCursorPosition] = '\0';
-    // turn the string into unsigned long
-    unsigned long manifestSize = strtoul(manifestSizeStr, NULL, 10);
-    if( DEBUG ) printf("manifest size: %lu\n", manifestSize);
+    char* manifest = readManifestFromSocket(sock);
+    // write that to ./
+    writeFile("./Manifest", manifest);
 
-    // read in the rest of the message
-    char* manifest = (char*)malloc(manifestSize + 1);
-    cursorPosition = 0;
-    int bytesRead = 0;
-    do {
-        bytesRead = read(sock, &manifest[cursorPosition], manifestSize);
-        cursorPosition += bytesRead;
-    } while( bytesRead > 0 && cursorPosition < manifestSize );
-    manifest[manifestSize] = '\0';
-
-    // write out the manifest file
-    writeFile(".Manifest", manifest);
-
-    // TODO connect to socket specified in .configure
     // TODO read in all files and write them out
-
-    // printf("manifest: %s\n", manifest);
+    int status;
+    do {
+        send(sock, "project file", 13, 0);
+        status = rwFileFromSocket(sock);
+    } while( status == 0 );
 
     // free
     free(manifest);
