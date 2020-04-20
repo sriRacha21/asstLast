@@ -45,8 +45,11 @@ int sock;
 
 /*  PROGRAM BODY    */
 int main( int argc, char** argv ) {
-    // tell the program what to do when it exits
-    // atexit(stopped);
+    // if we need to configure, configure the file and stop
+    if(argc >= 2 && strcmp(argv[1],"configure") == 0) {
+        configure(argc, argv);
+        return 0;
+    }
     // open socket connection
     sock = 0;
     int valread;
@@ -57,10 +60,21 @@ int main( int argc, char** argv ) {
         exit(1);
     }
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
+    // check if the configuration file exists
+    if( access(".configure", F_OK) < 0 ) {
+        printf("Configuration file does not exist.\n");
+        exit(1);
+    }
+    // get IP and port from configure file, if possible
+    char* configurationFile = readFile(".configure");
+    char* ip = strtok(configurationFile, "\n");
+    char* port = strtok(NULL, "\n");
+    if( DEBUG ) printf("Attempting to connect to IP: %s:%s\n", ip, port);
 
-    if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0){
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(atoi(port));
+
+    if(inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0){
         printf("\nInvalid address/Address not supported.\n");
         exit(1);
     }
@@ -80,8 +94,7 @@ int main( int argc, char** argv ) {
 
     if( argc < 3 || argc > 4 )
         fatalError("Too few or too many arguments.");
-    if( strcmp(argv[1],"configure") == 0 ) configure( argc, argv );
-    else if( strcmp(argv[1],"checkout") == 0 ) checkout( argc, argv );
+    if( strcmp(argv[1],"checkout") == 0 ) checkout( argc, argv );
 
     // send(sock, "Hello from client", 18, 0);
     // valread = read(sock, buffer, 1024);
@@ -147,5 +160,8 @@ void checkout( int argc, char** argv ) {
     // TODO connect to socket specified in .configure
     // TODO read in all files and write them out
 
-    printf("manifest: %s\n", manifest);
+    // printf("manifest: %s\n", manifest);
+
+    // free
+    free(manifest);
 }

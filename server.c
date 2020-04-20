@@ -35,6 +35,7 @@ int main(int argc, char** argv){
         exit(EXIT_FAILURE);
     }
 
+    printf("Server successfully started.\n");
     while(1){
         if(listen(server_fd, 3) < 0){
             perror("listen");
