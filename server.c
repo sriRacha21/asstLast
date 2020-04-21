@@ -71,6 +71,7 @@ void* clientThread(void* use){
         if(exists == 1) send(new_socket, "1", 1, 0); //project exists, sending "1" to client
         else send(new_socket, "0", 1, 0); //project doesnt exist, sending "0" to client
     }
+    
     pthread_mutex_unlock(&lock);
     printf("Exited new client thread.\n");
     close(new_socket);
