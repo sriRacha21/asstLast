@@ -7,13 +7,38 @@
 #include <sys/socket.h> 
 #include <netinet/in.h> 
 #include <pthread.h>
+#include <dirent.h>
 #define PORT 8080 
 #define MAX_THREADS 75
 
-char buffer[1024] = {0};
-char clientMessage[1024] = {0};
+char* getProjectName(char* msg, int prefixLength);
+int projectExists(char* projectName);
+void* clientThread(void* use);
 
+//char buffer[1024] = {0};
+char clientMessage[512] = {0};
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+char* getProjectName(char* msg, int prefixLength){
+    int newLength = strlen(msg) - prefixLength;
+    char* pName = malloc(sizeof(char) * newLength+1);
+    strncpy(pName, msg+prefixLength, newLength);
+    pName[newLength] = '\0'; //need null terminator to end string
+    return pName;
+}
+
+int projectExists(char* projectName){//goes through current directory and tries to find if projectName exists
+    struct dirent* dirPointer;
+    DIR* currentDir = opendir("."); //idk if this is right
+    if(currentDir == NULL){
+        perror("Can't open directory");
+        exit(EXIT_FAILURE);
+    }
+    while((dirPointer = readdir(currentDir)) != NULL){
+        if(strcmp(projectName, dirPointer->d_name) == 0) return 1; //exists
+    }
+    return 0; //nope
+}
 
 void* clientThread(void* use){
     int new_socket = *((int*) use);
@@ -22,13 +47,31 @@ void* clientThread(void* use){
         perror("Read error");
         exit(EXIT_FAILURE);
     }
-    char* hello = "Hello from server";
 
-    //client pooperations
     pthread_mutex_lock(&lock);
     printf("Server message: %s\n", clientMessage);
+
+    //client operations below, the server will act accordingly to the client's needs based on the message sent from the client.
+    int prefixLength; //variable made so getProjectName() can appropriately find the substring of the project name based on client demand
+
+    //given "manifest:<project name>" sends the .manifest of a project
+    if(strstr(clientMessage, "manifest:") != NULL){
+        prefixLength = 9;
+    }
+
+    //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project
+    else if(strstr(clientMessage, "project file:") != NULL){
+        prefixLength = 13;
+    }
+
+    //given "project:<project name>" by client, sends 1 if project exists and 0 if it does not exist
+    else if(strstr(clientMessage, "project:") != NULL){
+        char* pName = getProjectName(clientMessage, 8);
+        int exists = projectExists(pName);
+        if(exists == 1) send(new_socket, "1", 1, 0); //project exists, sending "1" to client
+        else send(new_socket, "0", 1, 0); //project doesnt exist, sending "0" to client
+    }
     pthread_mutex_unlock(&lock);
-    send(new_socket, hello, strlen(hello), 0);
     printf("Exited new client thread.\n");
     close(new_socket);
     pthread_exit(NULL);
