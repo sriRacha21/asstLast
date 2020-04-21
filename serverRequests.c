@@ -1,9 +1,11 @@
+#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
-void checkProjectExist( int sock, char* projectName );
+void doesProjectExist( int sock, char* projectName );
 
-void checkProjectExist( int sock, char* projectName ) {
+void doesProjectExist( int sock, char* projectName ) {
     int projectNameLength = strlen("project:") + strlen(projectName) + 1;
     char* projectNameRequest = (char*)malloc(projectNameLength);
     memset(projectNameRequest,'\0',projectNameLength);

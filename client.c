@@ -16,6 +16,7 @@
 // my own imports
 #include "definitions.h"
 #include "fileIO.h"
+#include "serverRequests.h"
 
 // definitions
 #define FALSE 0
@@ -23,14 +24,15 @@
 #define PORT 8080
 
 // prototypes
-void stopped();
+void warning(char* message);
 void fatalError(char* message);
 int main( int argc, char** argv );
 void configure( int argc, char** argv );
 void checkout( int argc, char** argv );
+void update( int argc, char** argv );
 
 /*  HELPERS */
-void stopped() { printf("Interrupt signal received\n"); }
+void warning(char* message) { printf("Warning: %s\n"); }
 void fatalError(char* message) {
     printf("Error: %s\n", message);
     exit(1);
@@ -51,16 +53,11 @@ int main( int argc, char** argv ) {
     int valread;
     struct sockaddr_in serv_addr;
     char buffer[1024] = {0};
-    if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        printf("\nSocket creation error.\n");
-        exit(1);
-    }
+    if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) fatalError("Socket creation error");
 
     // check if the configuration file exists
-    if( access(".configure", F_OK) < 0 ) {
-        printf("Configuration file does not exist.\n");
-        exit(1);
-    }
+    if( access(".configure", F_OK) < 0 ) fatalError(".configure does not exist.");
+
     // get IP and port from configure file, if possible
     char* configurationFile = readFile(".configure");
     char* ip = strtok(configurationFile, "\n");
@@ -70,10 +67,7 @@ int main( int argc, char** argv ) {
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(atoi(port));
 
-    if(inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0){
-        printf("\nInvalid address/Address not supported.\n");
-        exit(1);
-    }
+    if(inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0) fatalError("Invalid address/address not supported");
 
     // connect to server, reattempting every 3 seconds
     while( TRUE ){
@@ -88,8 +82,7 @@ int main( int argc, char** argv ) {
         }
     }
 
-    if( argc < 3 || argc > 4 )
-        fatalError("Too few or too many arguments.");
+    if( argc < 3 || argc > 4 ) fatalError("Too few or too many arguments.");
     if( strcmp(argv[1],"checkout") == 0 ) checkout( argc, argv );
     if( strcmp(argv[1],"update") == 0 ) update( argc, argv );
 
@@ -102,7 +95,7 @@ int main( int argc, char** argv ) {
 /*  CLIENT COMMANDS */
 void configure( int argc, char** argv ) {
     // guard clause for argument count
-    if( argc != 4 ) fatalError("Too few or too many arguments for client configure! IP and port are required arguments.");
+    if( argc != 4 ) fatalError("Too few or too many arguments for configure! IP and port are required arguments.");
     
     // store path as variable
     char configurePath[13] = ".configure";
@@ -121,7 +114,10 @@ void configure( int argc, char** argv ) {
 }
 
 void checkout( int argc, char** argv ) {
-    if( argc != 3 ) fatalError("Too few or too many arguments for client checkout! Project name is a required argument.");
+    if( argc != 3 ) fatalError("Too few or too many arguments for checkout! Project name is a required argument.");
+
+    // ask the server if the project exists
+    doesProjectExist(sock, argv[2]);
 
     // tell server we need the manifest, assume send is blocking
     int manifestRequestLength = strlen("manifest:") + strlen(argv[2]) + 1;
@@ -129,16 +125,13 @@ void checkout( int argc, char** argv ) {
     memset(manifestRequest,'\0',manifestRequestLength);
     strcat(manifestRequest,"manifest:");
     strcat(manifestRequest,argv[2]);
-
+    // send a request to the server for the manifest
     send(sock, manifestRequest, 9, 0);
     // read a response from the server
     char* manifest = readManifestFromSocket(sock);
     // write that to ./
-    writeFile("./Manifest", manifest);
+    writeFile(".Manifest", manifest);
     
-    // ask the server if the project exists
-    doesProjectExist(sock, argv[2]);
-
     // build a string that will be used to request all the files in the project from the server
     int projectFileNameLength = strlen("project file:") + strlen(argv[2]) + 1;
     char* projectFileName = (char*)malloc(projectFileNameLength);
@@ -157,5 +150,38 @@ void checkout( int argc, char** argv ) {
 }
 
 void update( int argc, char** argv ) {
-    if( argc != 3 ) fatalError("Too few or too many arguments for client update! Proejct name is a required argument.");
+    if( argc != 3 ) fatalError("Too few or too many arguments for update! Project name is a required argument.");
+
+    // ask the server if the project exists
+    doesProjectExist(sock, argv[2]);
+
+    if( access(".Manifest", F_OK) < 0 ) fatalError(".Manifest does not exist.");
+
+    // tell server we need the manifest, assume send is blocking
+    int manifestRequestLength = strlen("manifest:") + strlen(argv[2]) + 1;
+    char* manifestRequest = (char*)malloc(manifestRequestLength);
+    memset(manifestRequest,'\0',manifestRequestLength);
+    strcat(manifestRequest,"manifest:");
+    strcat(manifestRequest,argv[2]);
+    // send a request to the server for the manifest
+    send(sock, manifestRequest, 9, 0);
+    // read a response from the server
+    char* serverManifest = readManifestFromSocket(sock);
+    // get the local manifest
+    char* localManifest = readFile(".Manifest");
+    // compare the local manifest to the server manifest
+    // check that both manifests are non-empty
+    if(strlen(serverManifest) == 0) warning("Server manifest is empty!");
+    else if(strlen(localManifest) == 0) warning("Local manifest is empty!");
+    // check for full success (same .Manifest versions)
+    if( serverManifest[0] == localManifest[0] ) {
+        printf("Server and local manifest have matching versions. There is nothing to update.");
+        return;
+    }
+    // if a difference is found, add a line to .Update (writeFileAppend) and output information to stdout
+    // if a difference is found, but the user changed the file (compare hash of local file to file in manifest) write to .Conflict and delete .Update
+
+    // free
+    free(serverManifest);
+    free(localManifest);
 }
