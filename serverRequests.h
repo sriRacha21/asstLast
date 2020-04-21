@@ -1,0 +1,1 @@
+void doesProjectExist( int sock, char* projectName );
