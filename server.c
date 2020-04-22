@@ -8,20 +8,40 @@
 #include <netinet/in.h> 
 #include <pthread.h>
 #include <dirent.h>
+#include "fileIO.c"
 #define PORT 8080 
 #define MAX_THREADS 75
 
+int lengthOfInt(int num);
+int getFileSize(char* fileName);
 char* getProjectName(char* msg, int prefixLength);
 int projectExists(char* projectName);
 void* clientThread(void* use);
 
 //char buffer[1024] = {0};
-char clientMessage[512] = {0};
+char clientMessage[256] = {0};
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+int lengthOfInt(int num){
+    int i = 0;
+    while(num > 0){
+        num /= 10;
+        i ++;
+    }
+    return i;
+}
+
+int getFileSize(char* fileName){
+    int fp = open(fileName, O_RDONLY);
+    if(fp < 0) return -1; //error
+    int position = (int) lseek(fp, 0, SEEK_END);
+    lseek(fp, 0, SEEK_SET);
+    return position+1;
+}
 
 char* getProjectName(char* msg, int prefixLength){
     int newLength = strlen(msg) - prefixLength;
-    char* pName = malloc(sizeof(char) * newLength+1);
+    char* pName = malloc(sizeof(char) * (newLength+1));
     strncpy(pName, msg+prefixLength, newLength);
     pName[newLength] = '\0'; //need null terminator to end string
     return pName;
@@ -37,10 +57,11 @@ int projectExists(char* projectName){//goes through current directory and tries 
     while((dirPointer = readdir(currentDir)) != NULL){
         if(strcmp(projectName, dirPointer->d_name) == 0) return 1; //exists
     }
+    closedir(currentDir);
     return 0; //nope
 }
 
-void* clientThread(void* use){
+void* clientThread(void* use){ //handles each client thread individually via multithreading
     int new_socket = *((int*) use);
     int valread = read(new_socket, clientMessage, 1024);
     if(valread < 0){
@@ -52,21 +73,40 @@ void* clientThread(void* use){
     printf("Server message: %s\n", clientMessage);
 
     //client operations below, the server will act accordingly to the client's needs based on the message sent from the client.
-    int prefixLength; //variable made so getProjectName() can appropriately find the substring of the project name based on client demand
+    int prefixLength; //variable made so getProjectName() can appropriately find the substring of the project name based on client message
+    char* pName;
 
-    //given "manifest:<project name>" sends the .manifest of a project
+    //given "manifest:<project name>" sends the .manifest of a project as a char*
     if(strstr(clientMessage, "manifest:") != NULL){
         prefixLength = 9;
+        pName = getProjectName(clientMessage, prefixLength);
+        chdir(pName); //cd to project directory
+        int manifestSize = getFileSize(".Manifest");
+        int manifestSizeIntLength = lengthOfInt(manifestSize); //used for string concatenation and to convert to string
+        char* manifestSizeStr = malloc(sizeof(char) * manifestSizeIntLength);
+        sprintf(manifestSizeStr, "%d", manifestSize);
+        char* manifestContents = readFile(".Manifest");
+        char* manifestSizeDelimContents = malloc(sizeof(char) * (strlen(manifestContents) + 1 + manifestSizeIntLength));
+        strcat(manifestSizeDelimContents, manifestSizeStr);
+        strcat(manifestSizeDelimContents, ";");
+        strcat(manifestSizeDelimContents, manifestContents);
+        if(manifestContents == NULL){
+            perror("Manifest read error");
+            exit(EXIT_FAILURE);
+        }
+        else send(new_socket, manifestContents, manifestSize, 0);
     }
 
     //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project
     else if(strstr(clientMessage, "project file:") != NULL){
         prefixLength = 13;
+        pName = getProjectName(clientMessage, prefixLength);
     }
 
     //given "project:<project name>" by client, sends 1 if project exists and 0 if it does not exist
     else if(strstr(clientMessage, "project:") != NULL){
-        char* pName = getProjectName(clientMessage, 8);
+        prefixLength = 8;
+        pName = getProjectName(clientMessage, prefixLength);
         int exists = projectExists(pName);
         if(exists == 1) send(new_socket, "1", 1, 0); //project exists, sending "1" to client
         else send(new_socket, "0", 1, 0); //project doesnt exist, sending "0" to client
@@ -116,7 +156,7 @@ int main(int argc, char** argv){
     int i = 0;
 
     printf("Server successfully started.\n");
-    while(1){
+    while(1){ //loop accepts up to 75 client connections and creates a thread for each one, each client socket is passed to clientThread() for further operation
         if((new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addLength)) < 0){
             perror("accept");
             exit(EXIT_FAILURE);
