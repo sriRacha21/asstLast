@@ -1,5 +1,5 @@
-all: client.c server.c fileIO.c serverRequests.c fileIO.h serverRequests.h definitions.h
-	gcc -o client client.c fileIO.c serverRequests.c
+all: client.c server.c fileIO.c serverRequests.c md5.c fileIO.h serverRequests.h definitions.h md5.h
+	gcc -o client client.c fileIO.c serverRequests.c md5.c
 	gcc -o server server.c -pthread
 
 clean:

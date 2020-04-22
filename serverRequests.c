@@ -5,6 +5,12 @@
 
 void doesProjectExist( int sock, char* projectName );
 
+typedef struct manifestEntry {
+    int version;
+    char* path;
+    char* hash;
+} manifestEntry;
+
 void doesProjectExist( int sock, char* projectName ) {
     int projectNameLength = strlen("project:") + strlen(projectName) + 1;
     char* projectNameRequest = (char*)malloc(projectNameLength);

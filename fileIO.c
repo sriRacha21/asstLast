@@ -13,6 +13,7 @@ void writeFile( char *path, char *content );
 void writeFileAppend( int fd, char *content );
 char* readManifestFromSocket(int sock);
 int rwFileFromSocket(int sock);
+int lineCount(char* path);
 
 // read a file and return its contents
 char* readFile(char *filename) {
@@ -20,7 +21,10 @@ char* readFile(char *filename) {
         printf("Attempting to read file %s\n", filename);
     // open the file for reading
     int fd = open(filename, O_RDONLY);
-    if( fd < 0 ) return;
+    if( fd < 0 ) {
+        printf("Could not read file %s.\n");
+        exit(1);
+    }
     // find out how big the file is
     int position = (int) lseek( fd, 0, SEEK_END );
     // reset the cursor to the beginning of the file
@@ -142,4 +146,14 @@ int rwFileFromSocket(int sock) {
     free(buffer);
     // return success
     return 0;
+}
+
+int lineCount(char* str) {
+    int newLineCounter = 0;
+    int i;
+    for( i = 0; i < strlen(str); i++ )
+        if( str[i] == '\n' )
+            newLineCounter += 1;
+    free(str);
+    return newLineCounter;
 }

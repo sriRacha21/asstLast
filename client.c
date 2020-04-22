@@ -17,6 +17,7 @@
 #include "definitions.h"
 #include "fileIO.h"
 #include "serverRequests.h"
+#include "md5.h"
 
 // definitions
 #define FALSE 0
@@ -30,6 +31,7 @@ int main( int argc, char** argv );
 void configure( int argc, char** argv );
 void checkout( int argc, char** argv );
 void update( int argc, char** argv );
+void md5hash(char* input, char* buffer);
 
 /*  HELPERS */
 void warning(char* message) { printf("Warning: %s\n"); }
@@ -40,6 +42,14 @@ void fatalError(char* message) {
 
 // globals
 int sock;
+
+/*  HASH FUNCTION (MD5)  */
+void md5hash(char* input, char* buffer) {
+    MD5_CTX md5;
+    MD5_Init(&md5);
+    MD5_Update(&md5,input,strlen(input));
+    MD5_Final(buffer,&md5);
+}
 
 /*  PROGRAM BODY    */
 int main( int argc, char** argv ) {
@@ -168,20 +178,145 @@ void update( int argc, char** argv ) {
     // read a response from the server
     char* serverManifest = readManifestFromSocket(sock);
     // get the local manifest
-    char* localManifest = readFile(".Manifest");
+    char* clientManifest = readFile(".Manifest");
     // compare the local manifest to the server manifest
     // check that both manifests are non-empty
     if(strlen(serverManifest) == 0) warning("Server manifest is empty!");
-    else if(strlen(localManifest) == 0) warning("Local manifest is empty!");
+    else if(strlen(clientManifest) == 0) warning("Local manifest is empty!");
+    // open the file for .Update
+    remove(".Update");
+    int fdUpdate = open(".Update", O_APPEND | O_CREAT | O_RDWR);
     // check for full success (same .Manifest versions)
-    if( serverManifest[0] == localManifest[0] ) {
+    if( serverManifest[0] == clientManifest[0] ) {
         printf("Server and local manifest have matching versions. There is nothing to update.");
         return;
     }
-    // if a difference is found, add a line to .Update (writeFileAppend) and output information to stdout
-    // if a difference is found, but the user changed the file (compare hash of local file to file in manifest) write to .Conflict and delete .Update
+    // check for difference between local manifest and server manifest
+    char serverHash[16], clientHash[16];
+    md5hash(serverManifest, serverHash);
+    md5hash(clientManifest, clientHash);
+    int isDifferent = strcmp(serverHash,clientHash) == 0 ? 0 : 1;
+    // return if the manifests are the same
+    if( !isDifferent ) { // this should never happen because we compared the first character and returned if they were the same
+        printf("Server and local manifest files are complete match. There is nothing to update.");
+        return;
+    }
+    /*  tokenize the server manifest and local manifest to be able to get versions, filepaths, and hashes (in that order per line)   */
+    /*  tokenize the server manifest */
+    // allocate space for entries in the server manifest, one struct per entry in the server manifest
+    manifestEntry* serverManifestEntries = (manifestEntry*)malloc(sizeof(manifestEntry)*lineCount(serverManifest));
+    // save pointers since we are using strtok for processing two strings at a time
+    char* savePtrServerManifest;
+    // throw away the first value because we don't need project version
+    char* serverManifestEntry = strtok_r(serverManifest, "\n", &savePtrServerManifest); // 32 bytes for hash, 1 byte for the file version, 2 bytes for spaces, and 100 bytes for file path
+    // loop over the entries in the manifest
+    int i = 0;
+    while( serverManifestEntry != NULL ) {
+        serverManifestEntry = strtok_r(NULL,"\n",&savePtrServerManifest);
+        // tokenize the entry into version, path, hash
+        char* savePtrServerManifestEntry;
+        serverManifestEntries[i].version = atoi(strtok_r(serverManifestEntry," ",&savePtrServerManifestEntry));
+        serverManifestEntries[i].path = strtok_r(NULL," ",&savePtrServerManifestEntry);
+        serverManifestEntries[i].hash = strtok_r(NULL," ",&savePtrServerManifestEntry);
+        // increment the counter
+        i++;
+    }
+    int numServerManifestEntries = i;
+
+
+    /*  tokenize the client manifest    */
+    // allocate space for entries in the local manifest, one struct per entry in the server manifest
+    manifestEntry* clientManifestEntries = (manifestEntry*)malloc(sizeof(manifestEntry)*lineCount(clientManifest));
+    // save pointers since we are using strtok for processing two strings at a time
+    char* savePtrClientManifest;
+    // throw away the first value because we don't need project version
+    char* clientManifestEntry = strtok_r(clientManifest, "\n", &savePtrClientManifest); // 32 bytes for hash, 1 byte for the file version, 2 bytes for spaces, and 100 bytes for file path
+    // loop over the entries in the manifest
+    i = 0;
+    while( clientManifestEntry != NULL ) {
+        clientManifestEntry = strtok_r(NULL,"\n",&savePtrClientManifest);
+        // tokenize the entry into version, path, hash
+        char* savePtrClientManifestEntry;
+        clientManifestEntries[i].version = atoi(strtok_r(clientManifestEntry," ",&savePtrClientManifestEntry));
+        clientManifestEntries[i].path = strtok_r(NULL," ",&savePtrClientManifestEntry);
+        clientManifestEntries[i].hash = strtok_r(NULL," ",&savePtrClientManifestEntry);
+        // increment the counter
+        i++;
+    }
+    int numClientManifestEntries = i;
+
+    /*  Check for differences between local and client manifests    */
+    int conflicting = FALSE;
+    int fdConflict = -1;
+    i = 0;
+    while( i < numClientManifestEntries || i < numServerManifestEntries ) {
+        // if the client has more entries (server has removed files)
+        if( i >= numClientManifestEntries ) {
+            int serverVersion = serverManifestEntries[i].version;
+            char* serverPath = serverManifestEntries[i].path;
+            char* serverHash = serverManifestEntries[i].hash;
+
+            char* toWrite = (char*)malloc(strlen(serverPath)+strlen(serverHash)+5);
+            sprintf(toWrite, "D %s %s\n",serverPath,serverHash);
+            printf("D %s\n",serverPath);
+            writeFileAppend(fdUpdate, toWrite);
+            free(toWrite);
+        // if the server has more entries (server has files that were added)
+        } else if( i >= numServerManifestEntries ) {
+            int clientVersion = clientManifestEntries[i].version;
+            char* clientPath = clientManifestEntries[i].path;
+            char* clientHash = clientManifestEntries[i].hash;
+
+            char* toWrite = (char*)malloc(strlen(clientPath)+strlen(clientHash)+5);
+            sprintf(toWrite, "A %s %s\n",clientPath,clientHash);
+            printf("D %s\n",clientPath);
+            writeFileAppend(fdUpdate, toWrite);
+            free(toWrite);
+        } else {
+            int clientVersion = clientManifestEntries[i].version;
+            char* clientPath = clientManifestEntries[i].path;
+            char* clientHash = clientManifestEntries[i].hash;
+
+            int serverVersion = serverManifestEntries[i].version;
+            char* serverPath = serverManifestEntries[i].path;
+            char* serverHash = serverManifestEntries[i].hash;
+
+            // if a difference is found, and the user did not change the file add a line to .Update (writeFileAppend) and output information to stdout
+            // check if there is a difference between the local and server hash
+            if( strcmp(serverHash,clientHash) == 0 ) continue;
+            // check if user changed the file
+            char* fileContents = readFile(clientPath);
+            char liveHash[16];
+            md5hash(fileContents,liveHash);
+            // if the user did not change the file write out to .Update
+            if( strcmp(liveHash,clientHash) == 0 ) {
+                char* toWrite = (char*)malloc(strlen(serverPath)+strlen(serverHash)+5);
+                sprintf(toWrite, "M %s %s\n", serverPath, serverHash);
+                printf("M %s\n", clientPath);
+                writeFileAppend(fdUpdate, toWrite);
+                free(toWrite);
+            // if the user did change the file write out to conflict and turn on the conflicting flag
+            } else {
+                conflicting = TRUE;
+                fdConflict = open(".Conflict", O_APPEND | O_CREAT | O_RDWR);
+
+                char* toWrite = (char*)malloc(strlen(serverPath)+strlen(liveHash)+5);
+                sprintf(toWrite, "C %s %s\n", serverPath, liveHash);
+                printf("C %s\n", clientPath);
+                writeFileAppend(fdUpdate, toWrite);
+                free(toWrite);
+            }
+            // free
+            free(fileContents);
+        }
+    }
+    // delete .Update if there is a conflict
+    if( conflicting ) remove(".Update");
 
     // free
+    free(serverManifestEntries);
+    free(clientManifestEntries);
     free(serverManifest);
-    free(localManifest);
+    free(clientManifest);
+    close(fdUpdate);
 }
