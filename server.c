@@ -12,6 +12,7 @@
 #define PORT 8080 
 #define MAX_THREADS 75
 
+char* concatFileSpecsNoPath(char* fileName);
 int lengthOfInt(int num);
 int getFileSize(char* fileName);
 char* getProjectName(char* msg, int prefixLength);
@@ -21,6 +22,24 @@ void* clientThread(void* use);
 //char buffer[1024] = {0};
 char clientMessage[256] = {0};
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+char* concatFileSpecsNoPath(char* fileName){
+    int fileSize = getFileSize(fileName); //size in bytes
+    int fileSizeIntLength = lengthOfInt(fileSize); //used for string concatenation and to convert to string
+    char* fileSizeStr = malloc(sizeof(char) * fileSizeIntLength); //allocate char array for int to string conversion
+    sprintf(fileSizeStr, "%d", fileSize); //convert int of file size (bytes) to a string
+    char* fileContents = readFile(fileName); //read in file contents
+    char* fileSizeDelimContents = malloc(sizeof(char) * (strlen(fileContents) + 1 + fileSizeIntLength)); //allocate size of file + space for ; + space for the number of the file size (in bytes), this is to return
+    strcat(fileSizeDelimContents, fileSizeStr);
+    strcat(fileSizeDelimContents, ";");
+    strcat(fileSizeDelimContents, fileContents);
+    if(fileContents == NULL || fileSizeDelimContents == NULL){
+        perror("File read error");
+        exit(EXIT_FAILURE);
+    }
+    //should end up being <filesize>;<filecontents>
+    return fileSizeDelimContents; //because its the file size then the ; delim then the contents haha epic
+}
 
 int lengthOfInt(int num){
     int i = 0;
@@ -82,19 +101,8 @@ void* clientThread(void* use){ //handles each client thread individually via mul
         pName = getProjectName(clientMessage, prefixLength);
         chdir(pName); //cd to project directory
         int manifestSize = getFileSize(".Manifest");
-        int manifestSizeIntLength = lengthOfInt(manifestSize); //used for string concatenation and to convert to string
-        char* manifestSizeStr = malloc(sizeof(char) * manifestSizeIntLength);
-        sprintf(manifestSizeStr, "%d", manifestSize);
-        char* manifestContents = readFile(".Manifest");
-        char* manifestSizeDelimContents = malloc(sizeof(char) * (strlen(manifestContents) + 1 + manifestSizeIntLength));
-        strcat(manifestSizeDelimContents, manifestSizeStr);
-        strcat(manifestSizeDelimContents, ";");
-        strcat(manifestSizeDelimContents, manifestContents);
-        if(manifestContents == NULL){
-            perror("Manifest read error");
-            exit(EXIT_FAILURE);
-        }
-        else send(new_socket, manifestContents, manifestSize, 0);
+        char* manifestContents = concatFileSpecsNoPath(".Manifest");
+        send(new_socket, manifestContents, manifestSize, 0);
     }
 
     //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project
