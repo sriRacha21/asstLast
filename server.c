@@ -12,7 +12,7 @@
 #define PORT 8080 
 #define MAX_THREADS 75
 
-char* concatFileSpecsNoPath(char* fileName);
+char* concatFileSpecs(char* fileName, int withPath); //0 = <size>;<content> 1 = <size>;<path>;<content>
 int lengthOfInt(int num);
 int getFileSize(char* fileName);
 char* getProjectName(char* msg, int prefixLength);
@@ -23,7 +23,7 @@ void* clientThread(void* use);
 char clientMessage[256] = {0};
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
-char* concatFileSpecsNoPath(char* fileName){
+char* concatFileSpecs(char* fileName, int withPath){
     int fileSize = getFileSize(fileName); //size in bytes
     int fileSizeIntLength = lengthOfInt(fileSize); //used for string concatenation and to convert to string
     char* fileSizeStr = malloc(sizeof(char) * fileSizeIntLength); //allocate char array for int to string conversion
@@ -32,12 +32,17 @@ char* concatFileSpecsNoPath(char* fileName){
     char* fileSizeDelimContents = malloc(sizeof(char) * (strlen(fileContents) + 1 + fileSizeIntLength)); //allocate size of file + space for ; + space for the number of the file size (in bytes), this is to return
     strcat(fileSizeDelimContents, fileSizeStr);
     strcat(fileSizeDelimContents, ";");
+    if(withPath == 1){
+        //do stuff here tomorrow to add in path
+    }
     strcat(fileSizeDelimContents, fileContents);
     if(fileContents == NULL || fileSizeDelimContents == NULL){
         perror("File read error");
         exit(EXIT_FAILURE);
     }
-    //should end up being <filesize>;<filecontents>
+    free(fileSizeStr);
+    free(fileContents);
+    free(fileSizeDelimContents);
     return fileSizeDelimContents; //because its the file size then the ; delim then the contents haha epic
 }
 
@@ -55,6 +60,7 @@ int getFileSize(char* fileName){
     if(fp < 0) return -1; //error
     int position = (int) lseek(fp, 0, SEEK_END);
     lseek(fp, 0, SEEK_SET);
+    close(fp);
     return position+1;
 }
 
@@ -74,13 +80,17 @@ int projectExists(char* projectName){//goes through current directory and tries 
         exit(EXIT_FAILURE);
     }
     while((dirPointer = readdir(currentDir)) != NULL){
-        if(strcmp(projectName, dirPointer->d_name) == 0) return 1; //exists
+        if(strcmp(projectName, dirPointer->d_name) == 0){
+            closedir(currentDir);
+            return 1; //exists
+        } 
     }
     closedir(currentDir);
     return 0; //nope
 }
 
 void* clientThread(void* use){ //handles each client thread individually via multithreading
+    printf("Thread successfully started for client socket.\n");
     int new_socket = *((int*) use);
     int valread = read(new_socket, clientMessage, 1024);
     if(valread < 0){
@@ -101,14 +111,17 @@ void* clientThread(void* use){ //handles each client thread individually via mul
         pName = getProjectName(clientMessage, prefixLength);
         chdir(pName); //cd to project directory
         int manifestSize = getFileSize(".Manifest");
-        char* manifestContents = concatFileSpecsNoPath(".Manifest");
+        char* manifestContents = concatFileSpecs(".Manifest", 0);
         send(new_socket, manifestContents, manifestSize, 0);
+        free(manifestContents);
+        free(pName);
     }
 
     //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project
     else if(strstr(clientMessage, "project file:") != NULL){
         prefixLength = 13;
         pName = getProjectName(clientMessage, prefixLength);
+        free(pName);
     }
 
     //given "project:<project name>" by client, sends 1 if project exists and 0 if it does not exist
@@ -118,6 +131,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
         int exists = projectExists(pName);
         if(exists == 1) send(new_socket, "1", 1, 0); //project exists, sending "1" to client
         else send(new_socket, "0", 1, 0); //project doesnt exist, sending "0" to client
+        free(pName);
     }
     
     pthread_mutex_unlock(&lock);
@@ -128,11 +142,10 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
 
 int main(int argc, char** argv){
-    int server_fd, new_socket;// valread;
+    int server_fd, new_socket;
     struct sockaddr_in address;
     int opt = 1;
     int addLength = sizeof(address);
-    //char* hello = "Hello from server";
 
     //create socket fd
     if((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0){
@@ -180,11 +193,6 @@ int main(int argc, char** argv){
             while(i < MAX_THREADS) pthread_join(threadID[i++], NULL);
             i = 0;
         }
-
-        /*valread = read(new_socket, buffer, 1024);
-        printf("%s\n", buffer);
-        send(new_socket, hello, strlen(hello), 0);
-        printf("Send hello \n");*/
     }
     
     return 0;
