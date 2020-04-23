@@ -13,7 +13,6 @@
 #define PORT 8080 
 #define MAX_THREADS 75
 
-int dirType(char* dName); //1 if file 0 if directory
 void sendProjectFiles(char* projectName, int socket);
 char* concatFileSpecs(char* fileName, char* projectName); //0 = <size>;<content> 1 = <size>;<path>;<content>
 char* concatFileSpecsWithPath(char* fileName, char* projectName);
@@ -47,7 +46,7 @@ void sendProjectFiles(char* projectName, int socket){
     }
     while((dirPointer = readdir(currentDir)) != NULL){
         if(strcmp(dirPointer->d_name, ".") != 0 && strcmp(dirPointer->d_name, "..") != 0){
-            if(dirType(dirPointer->d_name)){
+            if(dirPointer->d_type == 8){
                 char* fileSpecs = concatFileSpecs(dirPointer->d_name, projectName);
                 send(socket, fileSpecs, sizeof(char) * strlen(fileSpecs), 0);
                 free(fileSpecs);
