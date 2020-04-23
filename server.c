@@ -8,10 +8,13 @@
 #include <netinet/in.h> 
 #include <pthread.h>
 #include <dirent.h>
+#include <errno.h>
 #include "fileIO.c"
 #define PORT 8080 
 #define MAX_THREADS 75
 
+int dirType(char* dName); //1 if file 0 if directory
+void sendProjectFiles(char* projectName, int socket);
 char* concatFileSpecs(char* fileName, char* projectName); //0 = <size>;<content> 1 = <size>;<path>;<content>
 char* concatFileSpecsWithPath(char* fileName, char* projectName);
 int lengthOfInt(int num);
@@ -24,8 +27,41 @@ void* clientThread(void* use);
 char clientMessage[256] = {0};
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
+int dirType(char* dName){ //this doesnt work correctly right now
+    DIR* currentDir = opendir(dName);
+    if(currentDir != NULL){
+        closedir(currentDir);
+        return 0; //its a directory
+    }
+    else if(errno == ENOTDIR) return 1;
+    return -342; //???? somethin happened here and it aint good lmao
+}
+
+void sendProjectFiles(char* projectName, int socket){
+    char path[256];
+    struct dirent* dirPointer;
+    DIR* currentDir = opendir(projectName);
+    if(currentDir == NULL){
+        perror("Can't open directory");
+        exit(EXIT_FAILURE);
+    }
+    while((dirPointer = readdir(currentDir)) != NULL){
+        if(strcmp(dirPointer->d_name, ".") != 0 && strcmp(dirPointer->d_name, "..") != 0){
+            if(dirType(dirPointer->d_name)){
+                char* fileSpecs = concatFileSpecs(dirPointer->d_name, projectName);
+                send(socket, fileSpecs, sizeof(char) * strlen(fileSpecs), 0);
+                free(fileSpecs);
+            }
+            strcpy(path, projectName);
+            strcat(path, "/");
+            strcat(path, dirPointer->d_name);
+            sendProjectFiles(path, socket);
+        }
+    }
+    closedir(currentDir);
+}
+
 char* concatFileSpecs(char* fileName, char* projectName){
-    chdir(projectName);
     int fileSize = getFileSize(fileName); //size in bytes
     int fileSizeIntLength = lengthOfInt(fileSize); //used for string concatenation and to convert to string
     char* fileSizeStr = malloc(sizeof(char) * fileSizeIntLength); //allocate char array for int to string conversion
@@ -47,7 +83,6 @@ char* concatFileSpecs(char* fileName, char* projectName){
 }
 
 char* concatFileSpecsWithPath(char* fileName, char* projectName){
-    chdir(projectName);
     int fileSize = getFileSize(fileName); 
     int fileSizeIntLength = lengthOfInt(fileSize); 
     char* fileSizeStr = malloc(sizeof(char) * fileSizeIntLength); 
@@ -144,18 +179,19 @@ void* clientThread(void* use){ //handles each client thread individually via mul
     if(strstr(clientMessage, "manifest:") != NULL){
         prefixLength = 9;
         pName = getProjectName(clientMessage, prefixLength);
-        int manifestSize = getFileSize(".Manifest");
+        chdir(pName);
         char* manifestContents = concatFileSpecs(".Manifest", pName);
-        send(new_socket, manifestContents, manifestSize+1, 0);
+        send(new_socket, manifestContents, sizeof(char) * strlen(manifestContents), 0);
         free(manifestContents);
         free(pName);
-        closedir(pName);
     }
 
     //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project
     else if(strstr(clientMessage, "project file:") != NULL){
         prefixLength = 13;
         pName = getProjectName(clientMessage, prefixLength);
+        sendProjectFiles(pName, new_socket);
+        send(new_socket, "done;", sizeof(char) * strlen("done;"), 0);
         free(pName);
     }
 
