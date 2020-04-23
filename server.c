@@ -12,7 +12,8 @@
 #define PORT 8080 
 #define MAX_THREADS 75
 
-char* concatFileSpecs(char* fileName, int withPath); //0 = <size>;<content> 1 = <size>;<path>;<content>
+char* concatFileSpecs(char* fileName, char* projectName); //0 = <size>;<content> 1 = <size>;<path>;<content>
+char* concatFileSpecsWithPath(char* fileName, char* projectName);
 int lengthOfInt(int num);
 int getFileSize(char* fileName);
 char* getProjectName(char* msg, int prefixLength);
@@ -23,27 +24,61 @@ void* clientThread(void* use);
 char clientMessage[256] = {0};
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
-char* concatFileSpecs(char* fileName, int withPath){
+char* concatFileSpecs(char* fileName, char* projectName){
+    chdir(projectName);
     int fileSize = getFileSize(fileName); //size in bytes
     int fileSizeIntLength = lengthOfInt(fileSize); //used for string concatenation and to convert to string
     char* fileSizeStr = malloc(sizeof(char) * fileSizeIntLength); //allocate char array for int to string conversion
     sprintf(fileSizeStr, "%d", fileSize); //convert int of file size (bytes) to a string
     char* fileContents = readFile(fileName); //read in file contents
-    char* fileSizeDelimContents = malloc(sizeof(char) * (strlen(fileContents) + 1 + fileSizeIntLength)); //allocate size of file + space for ; + space for the number of the file size (in bytes), this is to return
-    strcat(fileSizeDelimContents, fileSizeStr);
-    strcat(fileSizeDelimContents, ";");
-    if(withPath == 1){
-        //do stuff here tomorrow to add in path
-    }
-    strcat(fileSizeDelimContents, fileContents);
-    if(fileContents == NULL || fileSizeDelimContents == NULL){
+    char* fullFileSpecs = malloc(sizeof(char) * (strlen(fileContents) + 1 + fileSizeIntLength + 1)); //allocate 
+    //building string to return
+    strcat(fullFileSpecs, fileSizeStr);
+    strcat(fullFileSpecs, ";");
+    strcat(fullFileSpecs, fileContents);
+    fullFileSpecs[strlen(fullFileSpecs)] = '\0';
+    if(fileContents == NULL || fullFileSpecs == NULL){
         perror("File read error");
         exit(EXIT_FAILURE);
     }
     free(fileSizeStr);
     free(fileContents);
-    free(fileSizeDelimContents);
-    return fileSizeDelimContents; //because its the file size then the ; delim then the contents haha epic
+    return fullFileSpecs; 
+}
+
+char* concatFileSpecsWithPath(char* fileName, char* projectName){
+    chdir(projectName);
+    int fileSize = getFileSize(fileName); 
+    int fileSizeIntLength = lengthOfInt(fileSize); 
+    char* fileSizeStr = malloc(sizeof(char) * fileSizeIntLength); 
+    sprintf(fileSizeStr, "%d", fileSize); 
+    char* fileContents = readFile(fileName); 
+    //finding relative path via string manip on absolute path
+    char* absolutePath = realpath(fileName, NULL);
+    int startIndex = strstr(absolutePath, projectName) - absolutePath;
+    int pathLength = strlen(absolutePath) - startIndex;
+    char* relativePath = malloc(sizeof(char) * pathLength);
+    int i;
+    for(i = 0; i < pathLength; i++){
+        relativePath[i] = absolutePath[i+startIndex];
+    }
+    //creating string to return
+    char* fullFileSpecs = malloc(sizeof(char) * (strlen(fileContents) + 1 + pathLength + 1 + fileSizeIntLength + 1)); 
+    strcat(fullFileSpecs, fileSizeStr);
+    strcat(fullFileSpecs, ";");
+    strcat(fullFileSpecs, relativePath);
+    strcat(fullFileSpecs, ";");
+    strcat(fullFileSpecs, fileContents);
+    fullFileSpecs[strlen(fullFileSpecs)] = '\0';
+    if(fileContents == NULL || fullFileSpecs == NULL){
+        perror("File read error");
+        exit(EXIT_FAILURE);
+    }
+    free(fileSizeStr);
+    free(fileContents);
+    free(absolutePath);
+    free(relativePath);
+    return fullFileSpecs; 
 }
 
 int lengthOfInt(int num){
@@ -109,12 +144,12 @@ void* clientThread(void* use){ //handles each client thread individually via mul
     if(strstr(clientMessage, "manifest:") != NULL){
         prefixLength = 9;
         pName = getProjectName(clientMessage, prefixLength);
-        chdir(pName); //cd to project directory
         int manifestSize = getFileSize(".Manifest");
-        char* manifestContents = concatFileSpecs(".Manifest", 0);
-        send(new_socket, manifestContents, manifestSize, 0);
+        char* manifestContents = concatFileSpecs(".Manifest", pName);
+        send(new_socket, manifestContents, manifestSize+1, 0);
         free(manifestContents);
         free(pName);
+        closedir(pName);
     }
 
     //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project
