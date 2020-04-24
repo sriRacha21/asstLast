@@ -19,22 +19,12 @@ char* concatFileSpecsWithPath(char* fileName, char* projectName);
 int lengthOfInt(int num);
 int getFileSize(char* fileName);
 char* getProjectName(char* msg, int prefixLength);
-int projectExists(char* projectName);
+void projectExists(char* projectName, int socket);
 void* clientThread(void* use);
 
 //char buffer[1024] = {0};
 char clientMessage[256] = {0};
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-
-int dirType(char* dName){ //this doesnt work correctly right now
-    DIR* currentDir = opendir(dName);
-    if(currentDir != NULL){
-        closedir(currentDir);
-        return 0; //its a directory
-    }
-    else if(errno == ENOTDIR) return 1;
-    return -342; //???? somethin happened here and it aint good lmao
-}
 
 void sendProjectFiles(char* projectName, int socket){
     char path[256];
@@ -141,7 +131,7 @@ char* getProjectName(char* msg, int prefixLength){
     return pName;
 }
 
-int projectExists(char* projectName){//goes through current directory and tries to find if projectName exists
+void projectExists(char* projectName, int socket){//goes through current directory and tries to find if projectName exists
     struct dirent* dirPointer;
     DIR* currentDir = opendir("."); //idk if this is right
     if(currentDir == NULL){
@@ -149,13 +139,14 @@ int projectExists(char* projectName){//goes through current directory and tries 
         exit(EXIT_FAILURE);
     }
     while((dirPointer = readdir(currentDir)) != NULL){
-        if(strcmp(projectName, dirPointer->d_name) == 0){
+        if(strcmp(projectName, dirPointer->d_name) == 0 && dirPointer->d_type == 4){
             closedir(currentDir);
-            return 1; //exists
+            send(socket, "exists", strlen("exists") * sizeof(char), 0);
+            return;
         } 
     }
     closedir(currentDir);
-    return 0; //nope
+    send(socket, "doesnt", strlen("exists") * sizeof(char), 0);
 }
 
 void* clientThread(void* use){ //handles each client thread individually via multithreading
@@ -198,9 +189,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
     else if(strstr(clientMessage, "project:") != NULL){
         prefixLength = 8;
         pName = getProjectName(clientMessage, prefixLength);
-        int exists = projectExists(pName);
-        if(exists == 1) send(new_socket, "1", 1, 0); //project exists, sending "1" to client
-        else send(new_socket, "0", 1, 0); //project doesnt exist, sending "0" to client
+        projectExists(pName, new_socket); //sends "exists" if project exists and "doesnt" if it doesnt exist
         free(pName);
     }
     
