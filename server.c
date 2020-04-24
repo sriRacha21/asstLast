@@ -10,7 +10,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include "fileIO.c"
-#define PORT 8080 
+#define PORT 6969 
 #define MAX_THREADS 75
 
 void sendProjectFiles(char* projectName, int socket);

@@ -22,7 +22,7 @@
 // definitions
 #define FALSE 0
 #define TRUE 1
-#define PORT 8080
+#define PORT 6969
 
 // prototypes
 void warning(char* message);
@@ -31,6 +31,7 @@ int main( int argc, char** argv );
 void configure( int argc, char** argv );
 void checkout( int argc, char** argv );
 void update( int argc, char** argv );
+void upgrade( int argc, char** argv );
 void md5hash(char* input, char* buffer);
 
 /*  HELPERS */
@@ -95,7 +96,10 @@ int main( int argc, char** argv ) {
     if( argc < 3 || argc > 4 ) fatalError("Too few or too many arguments.");
     if( strcmp(argv[1],"checkout") == 0 ) checkout( argc, argv );
     if( strcmp(argv[1],"update") == 0 ) update( argc, argv );
+    if( strcmp(argv[1],"upgrade") == 0 ) upgrade( argc, argv );
 
+    // tell server we are done making requests
+    done(sock);
     // free
     free(configurationFile);
 
@@ -319,4 +323,28 @@ void update( int argc, char** argv ) {
     free(serverManifest);
     free(clientManifest);
     close(fdUpdate);
+}
+
+void upgrade( int argc, char** argv ) {
+    if( argc != 3 ) fatalError("Too few or too many arguments for upgrade! Project name is a required argument.");
+
+    // check if the project exists on the server
+    doesProjectExist(sock, argv[2]);
+
+    // check if .Update exists, exit if it does not
+    if( access( ".Update", F_OK ) < 0 ) fatalError(".Update does not exist.");
+    // check if .Conflict exists, exit if it does
+    if( access( ".Conflict", F_OK ) >= 0 ) fatalError("A conflict exists in your project.");
+    
+    // check if .Update is empty, delete the file, and tell user project is up-to-date
+    char* updateContents = readFile(".Update");
+    if( strlen(updateContents) == 0 ) {
+        remove(".Update");
+        printf("Your project is up-to-date.\n");
+        return;
+    }
+    // parse .Update file for entries
+    // TODO
+    // free
+    free(updateContents);
 }
