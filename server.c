@@ -12,8 +12,7 @@
 #include "requestUtils.h"
 #include "fileIO.h"
 
-#define PORT 6969 
-#define MAX_THREADS 75
+#define MAX_THREADS 60
 
 void* clientThread(void* use);
 
@@ -30,7 +29,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
     //client operations below, the server will act accordingly to the client's needs based on the message sent from the client.
     while(1){
         int prefixLength; //variable made so getProjectName() can appropriately find the substring of the project name based on client message
-        char* pName;
+        char* pName; //project name
         int valread = read(new_socket, clientMessage, 1024);
         if(valread < 0){
             perror("Read error");
@@ -76,6 +75,18 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
 
 int main(int argc, char** argv){
+    int PORT;
+    if(argc != 2){
+        perror("Invalid arguments");
+        exit(EXIT_FAILURE);
+    }
+    else{
+        PORT = atoi(argv[1]);
+        if(PORT < 0 || PORT > 65535){
+            perror("Invalid port number");
+            exit(EXIT_FAILURE);
+        }
+    }
     int server_fd, new_socket;
     struct sockaddr_in address;
     int opt = 1;
@@ -87,7 +98,7 @@ int main(int argc, char** argv){
         exit(EXIT_FAILURE);
     }
 
-    //attach socket to port 8080
+    //attach socket to designated port
     if(setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))){
         perror("setsockopt");
         exit(EXIT_FAILURE);
@@ -95,7 +106,7 @@ int main(int argc, char** argv){
 
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons( PORT );
+    address.sin_port = htons(PORT);
 
     if(bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0){
         perror("Bind failure");
@@ -111,7 +122,7 @@ int main(int argc, char** argv){
     int i = 0;
 
     printf("Server successfully started.\n");
-    while(1){ //loop accepts up to 75 client connections and creates a thread for each one, each client socket is passed to clientThread() for further operation
+    while(1){ //loop accepts up to 60 client connections and creates a thread for each one, each client socket is passed to clientThread() for further operation
         if((new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addLength)) < 0){
             perror("accept");
             exit(EXIT_FAILURE);

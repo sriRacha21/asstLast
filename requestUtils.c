@@ -12,6 +12,10 @@
 #include "fileIO.h"
 #include "requestUtils.h"
 
+void createManifest(char* projectName){
+    chdir(projectName);
+}
+
 void sendProjectFiles(char* projectName, int socket){
     char path[256];
     struct dirent* dirPointer;
