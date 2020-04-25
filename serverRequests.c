@@ -22,7 +22,7 @@ void doesProjectExist( int sock, char* projectName ) {
     char exists[2];
     recv(sock, exists, 1, 0);
     if( atoi(exists) == 0 ) {
-        printf("Project does not exist on filesystem.");
+        printf("Project does not exist on filesystem.\n");
         exit(1);
     } else if( DEBUG )
         printf("Project found on filesystem!\n");
