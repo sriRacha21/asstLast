@@ -9,7 +9,7 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <errno.h>
-#include "fileIO.c"
+#include "fileIO.h"
 #include "requestUtils.h"
 
 void sendProjectFiles(char* projectName, int socket){
@@ -23,7 +23,7 @@ void sendProjectFiles(char* projectName, int socket){
     while((dirPointer = readdir(currentDir)) != NULL){
         if(strcmp(dirPointer->d_name, ".") != 0 && strcmp(dirPointer->d_name, "..") != 0){
             if(dirPointer->d_type == 8){
-                char* fileSpecs = concatFileSpecs(dirPointer->d_name, projectName);
+                char* fileSpecs = concatFileSpecsWithPath(dirPointer->d_name, projectName);
                 send(socket, fileSpecs, sizeof(char) * strlen(fileSpecs), 0);
                 free(fileSpecs);
             }
