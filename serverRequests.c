@@ -19,10 +19,10 @@ void doesProjectExist( int sock, char* projectName ) {
     strcat(projectNameRequest,"project:");
     strcat(projectNameRequest,projectName);
     send(sock, projectNameRequest, projectNameLength, 0);
-    char exists[2];
-    recv(sock, exists, 1, 0);
-    if( atoi(exists) == 0 ) {
-        printf("Project does not exist on filesystem.\n");
+    char exists[7];
+    recv(sock, exists, 7 * sizeof(char), 0);
+    if( strcmp(exists, "doesnt") == 0 ) {
+        printf("Project does not exist on filesystem.");
         exit(1);
     } else if( DEBUG )
         printf("Project found on filesystem!\n");
