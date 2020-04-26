@@ -76,8 +76,8 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
 int main(int argc, char** argv){
     int PORT;
-    if(argc != 2){
-        perror("Invalid arguments");
+    if(argc != 2 || !isdigit(argv[1])){ //if there arent 2 arguments or argv[1] isnt an int
+        perror("Invalid arguments: need just the port number to listen on");
         exit(EXIT_FAILURE);
     }
     else{
