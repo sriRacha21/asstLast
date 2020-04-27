@@ -11,76 +11,87 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <errno.h>
-#include <exitLeaks.h>
+#include "exitLeaks.h"
 
-void insertMalloc(struct exitNode** head, char* string){ //inserts at front
-    if(*head == NULL) *head = createExitN(string);
-    else{
-        struct exitNode* pointer = *head;
-        while(pointer->next != NULL){
-            if(strcmp(string, *pointer->strPtr) == 0){
-                pointer->freed = 0;
-                pointer->strPtr = &string;
-                return;
-            }
-            pointer = pointer->next;
-        }
-        pointer->next = createExitN(string);
-    }
-}
-
-struct exitNode* createExitN(char* string){
+struct exitNode* createNode(char* vName, char* vData){
     struct exitNode* toReturn = malloc(sizeof(struct exitNode));
-    toReturn->strPtr = &string;
-    toReturn->freed = 0;
+    toReturn->variableName = malloc(sizeof(char) * strlen(vName) + 1);
+    strcpy(toReturn->variableName, vName);
+    toReturn->variableName[strlen(toReturn->variableName)] = '\0';
+    toReturn->variableData = malloc(sizeof(char) * strlen(vData) + 1);
+    strcpy(toReturn->variableData, vData);
+    toReturn->variableData[strlen(toReturn->variableData)] = '\0';
     toReturn->next = NULL;
     return toReturn;
 }
 
-void freeMallocs(struct exitNode* head){ //only called at exit
-    struct exitNode* pointer = head;
-    struct exitNode* lagger = NULL;
-    while(pointer != NULL){
-        lagger = pointer;
-        pointer = pointer->next;
-        if(pointer->freed == 0) free(*lagger->strPtr); //if it hasnt been freed already
-        free(lagger);
+struct exitNode* insertExit(struct exitNode* head, struct exitNode* toInsert){
+    if(head == NULL) return toInsert;
+    struct exitNode* current = head;
+    while(current->next != NULL){
+        current = current->next;
     }
-}
-
-void freeVariable(char* string, struct exitNode* head){
-    struct exitNode* pointer = head;
-    while(pointer != NULL){
-        if(strcmp(string, *pointer->strPtr) == 0){
-            pointer->freed = 1;
-            free(*pointer->strPtr);
-            return;
-        }
-        pointer = pointer->next;
-    }
+    current->next = toInsert;
+    return head;
 }
 
 void printList(struct exitNode* head){
     struct exitNode* pointer = head;
     while(pointer != NULL){
-        printf("%s\n", *pointer->strPtr);
+        printf("%s: %s\n", pointer->variableName, pointer->variableData);
         pointer = pointer->next;
     }
 }
 
+void freeAllMallocs(struct exitNode* head){
+    struct exitNode* current = head;
+    struct exitNode* lagger = NULL;
+    while(current != NULL){
+        lagger = current;
+        current = current->next;
+        free(lagger->variableData);
+        free(lagger->variableName);
+        free(lagger);
+    }
+    return;
+}
+
+struct exitNode* freeVariable(struct exitNode* head, char* vName){ //frees a nodes variable name, data, and node itself and deletes it from LL
+    if(strcmp(head->variableName, vName) == 0){
+        struct exitNode* lagger = head->next;
+        free(head->variableData);
+        free(head->variableName);
+        free(head);
+        return lagger; //if its the first node delete/free everything then return the next thing
+    }
+    struct exitNode* current = head;
+    struct exitNode* lagger = NULL;
+    while(current != NULL){
+        if(strcmp(current->variableName, vName) == 0){
+            lagger->next = current->next;
+            free(current->variableData);
+            free(current->variableName);
+            free(current);
+            return head;
+        }
+        lagger = current;
+        current = current->next;
+    }
+    return head;
+}
+
+void cleanUp(){ //call at atexit
+    freeAllMallocs(variableList);
+}
+
 int main(int argc, char** argv){
-    char* testStr = malloc(sizeof(char) * 9);
-    strcpy(testStr, "elective");
-    char* testStr2 = malloc(sizeof(char) * 5);
-    strcpy(testStr2, "cool");
-    char* testStr3 = malloc(sizeof(char) * 3);
-    strcpy(testStr3, "in");
-    struct exitNode* linkedList = NULL;
-    insertMalloc(&linkedList, testStr);
-    insertMalloc(&linkedList, testStr2);
-    insertMalloc(&linkedList, testStr3);
-    printList(linkedList);
-    //freeMallocs(linkedList);
-    /*char** strPtr = &testStr;
-    free(*strPtr);*/
+    struct exitNode* list = NULL;
+    list = insertExit(list, createNode("testStr", "alabama"));
+    list = insertExit(list, createNode("testStr2", "arkansas"));
+    list = insertExit(list, createNode("testStr3", "united states of america"));
+    list = insertExit(list, createNode("testStr4", "brunswick"));
+    printList(list);
+    list = freeVariable(list ,"testStr");
+    printList(list);
+    freeAllMallocs(list);
 }

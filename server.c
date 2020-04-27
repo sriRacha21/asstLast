@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <errno.h>
+#include "exitLeaks.h"
 #include "requestUtils.h"
 #include "fileIO.h"
 
@@ -24,7 +25,9 @@ void* clientThread(void* use){ //handles each client thread individually via mul
     printf("Thread successfully started for client socket.\n");
     int new_socket = *((int*) use);
 
-    pthread_mutex_lock(&lock);
+    atexit(cleanUp); //deal with this 
+
+    pthread_mutex_lock(&lock); //this entire thread is a critical section screw it
 
     //client operations below, the server will act accordingly to the client's needs based on the message sent from the client.
     while(1){

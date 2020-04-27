@@ -1,11 +1,13 @@
 struct exitNode{
-    char** strPtr;
-    int freed; //1 if strPtr is freed already 0 if not
+    char* variableName;
+    char* variableData;
     struct exitNode* next;
 };
 
-void insertMalloc(struct exitNode** head, char* string);
-struct exitNode* createExitN(char* string);
-void freeMallocs(struct exitNode* head); //only used atexit.  FREES EVERYTHING
-void freeVariable(char* string, struct exitNode* head);
+struct exitNode* variableList = NULL;
+
+struct exitNode* createNode(char* vName, char* vData);
+struct exitNode* insertExit(struct exitNode* head, struct exitNode* toInsert);
+void freeAllMallocs(struct exitNode* head);
+struct exitNode* freeVariable(struct exitNode* head, char* vName);
 void printList(struct exitNode* head);
