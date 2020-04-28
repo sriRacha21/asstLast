@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <errno.h>
+#include <ctype.h>
 #include "exitLeaks.h"
 #include "requestUtils.h"
 #include "fileIO.h"
@@ -20,12 +21,12 @@ void* clientThread(void* use);
 //char buffer[1024] = {0};
 char clientMessage[256] = {0};
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_t threadID[60];
+int threadCounter = 0;
 
 void* clientThread(void* use){ //handles each client thread individually via multithreading
     printf("Thread successfully started for client socket.\n");
     int new_socket = *((int*) use);
-
-    atexit(cleanUp); //deal with this 
 
     pthread_mutex_lock(&lock); //this entire thread is a critical section screw it
 
@@ -78,18 +79,28 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
 
 int main(int argc, char** argv){
+    atexit(cleanUp);
     int PORT;
-    if(argc != 2 || !isdigit(argv[1])){ //if there arent 2 arguments or argv[1] isnt an int
-        perror("Invalid arguments: need just the port number to listen on");
+    if(argc != 2){ //these if statements look for a valid port number as the argument in argv[1]
+        printf("Invalid argument count\n");
         exit(EXIT_FAILURE);
     }
     else{
+        int length = strlen(argv[1]);
+        int j = 0;
+        for(j = 0; j < length; j++){
+            if(!isdigit(argv[1][j])){
+                printf("Invalid argument, please enter valid port number.\n");
+                exit(EXIT_FAILURE);
+            }
+        }
         PORT = atoi(argv[1]);
         if(PORT < 0 || PORT > 65535){
-            perror("Invalid port number");
+            printf("Valid port numbers are between 0 and 65535\n");
             exit(EXIT_FAILURE);
         }
     }
+
     int server_fd, new_socket;
     struct sockaddr_in address;
     int opt = 1;
@@ -116,13 +127,10 @@ int main(int argc, char** argv){
         exit(EXIT_FAILURE);
     }
 
-    if(listen(server_fd, 3) < 0){
+    if(listen(server_fd, 60) < 0){
         perror("listen");
         exit(EXIT_FAILURE);
     }
-
-    pthread_t threadID[60];
-    int i = 0;
 
     printf("Server successfully started.\n");
     while(1){ //loop accepts up to 60 client connections and creates a thread for each one, each client socket is passed to clientThread() for further operation
@@ -131,15 +139,15 @@ int main(int argc, char** argv){
             exit(EXIT_FAILURE);
         }
 
-        if(pthread_create(&threadID[i], NULL, clientThread, &new_socket) != 0){
+        if(pthread_create(&threadID[threadCounter], NULL, clientThread, &new_socket) != 0){
             perror("Thread creation failure");
             exit(EXIT_FAILURE);
         }
 
-        if(i >= MAX_THREADS){
-            i = 0;
-            while(i < MAX_THREADS) pthread_join(threadID[i++], NULL);
-            i = 0;
+        if(threadCounter >= MAX_THREADS){
+            threadCounter = 0;
+            while(threadCounter < MAX_THREADS) pthread_join(threadID[threadCounter++], NULL);
+            threadCounter = 0;
         }
     }
     

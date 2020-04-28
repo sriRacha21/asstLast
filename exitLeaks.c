@@ -13,15 +13,20 @@
 #include <errno.h>
 #include "exitLeaks.h"
 
+struct exitNode* variableList = NULL;
+
 struct exitNode* createNode(char* vName, char* vData){
     struct exitNode* toReturn = malloc(sizeof(struct exitNode));
     toReturn->variableName = malloc(sizeof(char) * strlen(vName) + 1);
     strcpy(toReturn->variableName, vName);
     toReturn->variableName[strlen(toReturn->variableName)] = '\0';
+
     toReturn->variableData = malloc(sizeof(char) * strlen(vData) + 1);
     strcpy(toReturn->variableData, vData);
     toReturn->variableData[strlen(toReturn->variableData)] = '\0';
+
     toReturn->next = NULL;
+    free(vData); //so do NOT PASS A STRING LITERAL AS the SECOND ARUGMENT!
     return toReturn;
 }
 
@@ -41,19 +46,6 @@ void printList(struct exitNode* head){
         printf("%s: %s\n", pointer->variableName, pointer->variableData);
         pointer = pointer->next;
     }
-}
-
-void freeAllMallocs(struct exitNode* head){
-    struct exitNode* current = head;
-    struct exitNode* lagger = NULL;
-    while(current != NULL){
-        lagger = current;
-        current = current->next;
-        free(lagger->variableData);
-        free(lagger->variableName);
-        free(lagger);
-    }
-    return;
 }
 
 struct exitNode* freeVariable(struct exitNode* head, char* vName){ //frees a nodes variable name, data, and node itself and deletes it from LL
@@ -80,11 +72,25 @@ struct exitNode* freeVariable(struct exitNode* head, char* vName){ //frees a nod
     return head;
 }
 
-void cleanUp(){ //call at atexit
-    freeAllMallocs(variableList);
+void freeAllMallocs(struct exitNode* head){
+    struct exitNode* current = head;
+    struct exitNode* lagger = NULL;
+    while(current != NULL){
+        lagger = current;
+        current = current->next;
+        free(lagger->variableData);
+        free(lagger->variableName);
+        free(lagger);
+    }
+    return;
 }
 
-int main(int argc, char** argv){
+void cleanUp(){ //call at atexit
+    freeAllMallocs(variableList);
+    printf("Server is now shutting down.\n");
+}
+
+/*int main(int argc, char** argv){
     struct exitNode* list = NULL;
     list = insertExit(list, createNode("testStr", "alabama"));
     list = insertExit(list, createNode("testStr2", "arkansas"));
@@ -94,4 +100,4 @@ int main(int argc, char** argv){
     list = freeVariable(list ,"testStr");
     printList(list);
     freeAllMallocs(list);
-}
+}*/

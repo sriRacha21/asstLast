@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdlib.h> 
 #include <stdio.h> 
 #include <string.h> 
@@ -9,6 +10,7 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <errno.h>
+#include <limits.h>
 #include "fileIO.h"
 #include "requestUtils.h"
 
@@ -43,10 +45,13 @@ void sendProjectFiles(char* projectName, int socket){
 char* concatFileSpecs(char* fileName, char* projectName){
     int fileSize = getFileSize(fileName); //size in bytes
     int fileSizeIntLength = lengthOfInt(fileSize); //used for string concatenation and to convert to string
-    char* fileSizeStr = malloc(sizeof(char) * fileSizeIntLength); //allocate char array for int to string conversion
+    char* fileSizeStr = malloc(sizeof(char) * fileSizeIntLength+1); //allocate char array for int to string conversion
     sprintf(fileSizeStr, "%d", fileSize); //convert int of file size (bytes) to a string
+    fileSizeStr[strlen(fileSizeStr)] = '\0';
+
     char* fileContents = readFile(fileName); //read in file contents
-    char* fullFileSpecs = malloc(sizeof(char) * (strlen(fileContents) + 1 + fileSizeIntLength + 1)); //allocate 
+
+    char* fullFileSpecs = malloc(sizeof(char) * (strlen(fileContents) + 1 + fileSizeIntLength + 1)); //allocate for final returned thing 
     //building string to return
     strcat(fullFileSpecs, fileSizeStr);
     strcat(fullFileSpecs, ";");
@@ -64,20 +69,27 @@ char* concatFileSpecs(char* fileName, char* projectName){
 char* concatFileSpecsWithPath(char* fileName, char* projectName){
     int fileSize = getFileSize(fileName); 
     int fileSizeIntLength = lengthOfInt(fileSize); 
-    char* fileSizeStr = malloc(sizeof(char) * fileSizeIntLength); 
+    char* fileSizeStr = malloc(sizeof(char) * fileSizeIntLength+1); 
     sprintf(fileSizeStr, "%d", fileSize); 
-    char* fileContents = readFile(fileName); 
+    fileSizeStr[strlen(fileSizeStr)] = '\0';
+
+    char* fileContents = readFile(fileName); //get contents of file
+
     //finding relative path via string manip on absolute path
     char* absolutePath = realpath(fileName, NULL);
     int startIndex = strstr(absolutePath, projectName) - absolutePath;
     int pathLength = strlen(absolutePath) - startIndex;
-    char* relativePath = malloc(sizeof(char) * pathLength);
+    char* relativePath = malloc(sizeof(char) * pathLength+1);
+    memset(relativePath, '\0', sizeof(char) * pathLength+1);
     int i;
     for(i = 0; i < pathLength; i++){
         relativePath[i] = absolutePath[i+startIndex];
     }
+    relativePath[strlen(relativePath)] = '\0';
+
     //creating string to return
     char* fullFileSpecs = malloc(sizeof(char) * (strlen(fileContents) + 1 + pathLength + 1 + fileSizeIntLength + 1)); 
+    memset(fullFileSpecs, '\0', sizeof(char) * (strlen(fileContents) + 1 + pathLength + 1 + fileSizeIntLength + 1));
     strcat(fullFileSpecs, fileSizeStr);
     strcat(fullFileSpecs, ";");
     strcat(fullFileSpecs, relativePath);
