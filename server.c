@@ -80,7 +80,9 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
 int main(int argc, char** argv){
     atexit(cleanUp);
+
     int PORT;
+    
     if(argc != 2){ //these if statements look for a valid port number as the argument in argv[1]
         printf("Invalid argument count\n");
         exit(EXIT_FAILURE);
