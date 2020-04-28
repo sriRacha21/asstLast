@@ -33,7 +33,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
     //client operations below, the server will act accordingly to the client's needs based on the message sent from the client.
     while(1){
         int prefixLength; //variable made so getProjectName() can appropriately find the substring of the project name based on client message
-        char* pName; //project name
+        //char* pName; //project name
         int valread = read(new_socket, clientMessage, 1024);
         if(valread < 0){
             perror("Read error");
@@ -45,29 +45,29 @@ void* clientThread(void* use){ //handles each client thread individually via mul
         //given "manifest:<project name>" sends the .manifest of a project as a char*
         if(strstr(clientMessage, "manifest:") != NULL){
             prefixLength = 9;
-            pName = getProjectName(clientMessage, prefixLength);
-            chdir(pName);
-            char* manifestContents = concatFileSpecs(".Manifest", pName);
-            send(new_socket, manifestContents, sizeof(char) * strlen(manifestContents), 0);
-            free(manifestContents);
-            free(pName);
+            insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            chdir(getVariableData(variableList, "pName"));
+            insertExit(variableList, createNode("manifestContents", concatFileSpecs(".Manifest", getVariableData(variableList, "pName")), 1));
+            send(new_socket, getVariableData(variableList, "manifestContents"), sizeof(char) * strlen(getVariableData(variableList, "manifestContents")), 0);
+            freeVariable(variableList, "manifestContents");
+            freeVariable(variableList, "pName");
         }
 
         //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project
         else if(strstr(clientMessage, "project file:") != NULL){
             prefixLength = 13;
-            pName = getProjectName(clientMessage, prefixLength);
-            sendProjectFiles(pName, new_socket);
+            insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            sendProjectFiles(getVariableData(variableList, "pName"), new_socket);
             send(new_socket, "done;", sizeof(char) * strlen("done;"), 0);
-            free(pName);
+            freeVariable(variableList, "pName");
         }
 
         //given "project:<project name>" by client, sends 1 if project exists and 0 if it does not exist
         else if(strstr(clientMessage, "project:") != NULL){
             prefixLength = 8;
-            pName = getProjectName(clientMessage, prefixLength);
-            projectExists(pName, new_socket); //sends "exists" if project exists and "doesnt" if it doesnt exist
-            free(pName);
+            insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            projectExists(getVariableData(variableList, "pName"), new_socket); //sends "exists" if project exists and "doesnt" if it doesnt exist
+            freeVariable(variableList, "pName");
         }
     }
     
