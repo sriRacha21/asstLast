@@ -34,6 +34,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
     while(1){
         int prefixLength; //variable made so getProjectName() can appropriately find the substring of the project name based on client message
         //char* pName; //project name
+        clientMessage[0] = '\0';
         int valread = read(new_socket, clientMessage, 1024);
         if(valread < 0){
             perror("Read error");
@@ -42,35 +43,48 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         if(strcmp(clientMessage, "finished") == 0){
             //send(new_socket, "done", strlen("done") * sizeof(char), 0);
+            printf("Received \"finished\", closing thread.\n");
             break; //client signals it is done so get out and close thread
         }
 
         //given "manifest:<project name>" sends the .manifest of a project as a char*
         if(strstr(clientMessage, "manifest:") != NULL){
+            printf("Received \"manifest:<projectname>\", getting project name then sending manifest.\n");
             prefixLength = 9;
-            insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            printf("Project name: %s\n", getVariableData(variableList, "pName"));
             chdir(getVariableData(variableList, "pName"));
-            insertExit(variableList, createNode("manifestContents", concatFileSpecs(".Manifest", getVariableData(variableList, "pName")), 1));
+            variableList = insertExit(variableList, createNode("manifestContents", concatFileSpecs(".Manifest", getVariableData(variableList, "pName")), 1));
+            printf("Sending .Manifest data.\n");
             send(new_socket, getVariableData(variableList, "manifestContents"), sizeof(char) * strlen(getVariableData(variableList, "manifestContents")), 0);
             freeVariable(variableList, "manifestContents");
             freeVariable(variableList, "pName");
+            printf("Finished manifest file.\n");
         }
 
         //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project
         else if(strstr(clientMessage, "project file:") != NULL){
+            printf("Received \"project file:<projectname>\", getting project name then sending all project files.\n");
             prefixLength = 13;
-            insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            printf("Project name: %s\n", getVariableData(variableList, "pName"));
+            printf("Sending project files...\n");
             sendProjectFiles(getVariableData(variableList, "pName"), new_socket);
             send(new_socket, "done", sizeof(char) * strlen("done"), 0);
             freeVariable(variableList, "pName");
+            printf("Finished sending project files.\n");
         }
 
         //given "project:<project name>" by client, sends 1 if project exists and 0 if it does not exist
         else if(strstr(clientMessage, "project:") != NULL){
+            printf("Received \"project:<projectname>\", getting project name then sending whether or not it exists.\n");
             prefixLength = 8;
-            insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            printList(variableList);
+            printf("Project name: %s\n", getVariableData(variableList, "pName"));
             projectExists(getVariableData(variableList, "pName"), new_socket); //sends "exists" if project exists and "doesnt" if it doesnt exist
             freeVariable(variableList, "pName");
+            printf("Finished verifying existence.\n");
         }
     }
     
@@ -138,7 +152,7 @@ int main(int argc, char** argv){
         exit(EXIT_FAILURE);
     }
 
-    printf("Server successfully started.\n");
+    printf("Server successfully started.\nAwaiting connection...\n");
     while(1){ //loop accepts up to 60 client connections and creates a thread for each one, each client socket is passed to clientThread() for further operation
         if((new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addLength)) < 0){
             perror("accept");
