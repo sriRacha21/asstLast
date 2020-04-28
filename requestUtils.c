@@ -144,10 +144,10 @@ void projectExists(char* projectName, int socket){//goes through current directo
     while((dirPointer = readdir(currentDir)) != NULL){
         if(strcmp(projectName, dirPointer->d_name) == 0 && dirPointer->d_type == 4){
             closedir(currentDir);
-            send(socket, "exists", strlen("exists") * sizeof(char), 0);
+            send(socket, "exists", strlen("exists") * sizeof(char) + 1, 0);
             return;
         } 
     }
     closedir(currentDir);
-    send(socket, "doesnt", strlen("exists") * sizeof(char), 0);
+    send(socket, "doesnt", strlen("exists") * sizeof(char) + 1, 0);
 }

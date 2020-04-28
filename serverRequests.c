@@ -20,7 +20,9 @@ void doesProjectExist( int sock, char* projectName ) {
     strcat(projectNameRequest,projectName);
     send(sock, projectNameRequest, projectNameLength, 0);
     char exists[7];
+    memset(exists,'\0',7);
     recv(sock, exists, 7 * sizeof(char), 0);
+    printf("Exists: %s\n",exists);
     if( strcmp(exists, "doesnt") == 0 ) {
         printf("Project does not exist on filesystem.");
         exit(1);

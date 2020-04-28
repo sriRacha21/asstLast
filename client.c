@@ -140,7 +140,8 @@ void checkout( int argc, char** argv ) {
     strcat(manifestRequest,"manifest:");
     strcat(manifestRequest,argv[2]);
     // send a request to the server for the manifest
-    send(sock, manifestRequest, 9, 0);
+    printf("Sending request to server: %s\n", manifestRequest);
+    send(sock, manifestRequest, manifestRequestLength, 0);
     // read a response from the server
     char* manifest = readManifestFromSocket(sock);
     // write that to ./
@@ -344,7 +345,37 @@ void upgrade( int argc, char** argv ) {
         return;
     }
     // parse .Update file for entries
-    // TODO
+    char* savePtrUpdate;
+    char* updateEntry = strtok_r(updateContents,"\n",&savePtrUpdate);
+    while( updateEntry != NULL ) {
+        // start the pointer
+        char* savePtrUpdateEntry;
+        // parse the entry for tag, file location, hash
+        char* tag = strtok_r(updateEntry," ",&savePtrUpdateEntry);
+        char* filepath = strtok_r(NULL," ",&savePtrUpdateEntry);
+        char* hash = strtok_r(NULL," ",&savePtrUpdateEntry);
+        // decide what to do based on tag
+        // check if tag exists
+        if( strlen(tag) < 1 ) continue;
+        // on D, remove entry from manifest
+        if( tag[0] == 'D' ) {
+            // make sure the manifest exists
+            if( access( ".Conflict", F_OK ) >= 0 ) fatalError("A deletion entry exists in your .Update and there is no .Manifest");
+            // open the new manifest file
+            int newManifestFd = open( ".Manifest.tmp", O_CREAT | O_APPEND | O_RDWR );
+            // read old manifest
+            char* oldManifestContents = readFile(".Manifest");
+            // save pointer to tokenize
+            char* savePtrManifest;
+            char* oldManifestEntry = strtok_r(oldManifestContents,"\n",&savePtrManifest);
+            while( oldManifestEntry != NULL ) {
+                // move token
+                oldManifestEntry = strtok_r(NULL,"\n",&savePtrManifest);
+            }
+        }
+        // update tokenizer
+        updateEntry = strtok_r(NULL,"\n",&savePtrUpdate);
+    }
     // free
     free(updateContents);
 }
