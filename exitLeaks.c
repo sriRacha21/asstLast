@@ -13,9 +13,7 @@
 #include <errno.h>
 #include "exitLeaks.h"
 
-struct exitNode* variableList = NULL;
-
-struct exitNode* createNode(char* vName, char* vData){
+struct exitNode* createNode(char* vName, char* vData, int freeMode){
     struct exitNode* toReturn = malloc(sizeof(struct exitNode));
     toReturn->variableName = malloc(sizeof(char) * strlen(vName) + 1);
     strcpy(toReturn->variableName, vName);
@@ -26,7 +24,8 @@ struct exitNode* createNode(char* vName, char* vData){
     toReturn->variableData[strlen(toReturn->variableData)] = '\0';
 
     toReturn->next = NULL;
-    free(vData); //so do NOT PASS A STRING LITERAL AS the SECOND ARUGMENT!
+    if(freeMode == 1) free(vData); //so do NOT PASS A STRING LITERAL AS the SECOND ARUGMENT!
+    else if(freeMode == 2) freeVariable(variableList, vName);
     return toReturn;
 }
 
@@ -38,14 +37,6 @@ struct exitNode* insertExit(struct exitNode* head, struct exitNode* toInsert){
     }
     current->next = toInsert;
     return head;
-}
-
-void printList(struct exitNode* head){
-    struct exitNode* pointer = head;
-    while(pointer != NULL){
-        printf("%s: %s\n", pointer->variableName, pointer->variableData);
-        pointer = pointer->next;
-    }
 }
 
 struct exitNode* freeVariable(struct exitNode* head, char* vName){ //frees a nodes variable name, data, and node itself and deletes it from LL
@@ -70,6 +61,23 @@ struct exitNode* freeVariable(struct exitNode* head, char* vName){ //frees a nod
         current = current->next;
     }
     return head;
+}
+
+char* getVariableData(struct exitNode* head, char* vName){
+    struct exitNode* current = head;
+    while(current != NULL){
+        if(strcmp(vName, current->variableName) == 0) return current->variableData;
+        current = current->next;
+    }
+    return NULL;
+}
+
+void printList(struct exitNode* head){
+    struct exitNode* pointer = head;
+    while(pointer != NULL){
+        printf("%s: %s\n", pointer->variableName, pointer->variableData);
+        pointer = pointer->next;
+    }
 }
 
 void freeAllMallocs(struct exitNode* head){

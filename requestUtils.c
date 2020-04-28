@@ -52,6 +52,7 @@ char* concatFileSpecs(char* fileName, char* projectName){
     char* fileContents = readFile(fileName); //read in file contents
 
     char* fullFileSpecs = malloc(sizeof(char) * (strlen(fileContents) + 1 + fileSizeIntLength + 1)); //allocate for final returned thing 
+    memset(fullFileSpecs, '\0', sizeof(char) * (strlen(fileContents) + 1 + fileSizeIntLength + 1));
     //building string to return
     strcat(fullFileSpecs, fileSizeStr);
     strcat(fullFileSpecs, ";");

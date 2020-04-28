@@ -80,6 +80,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
 int main(int argc, char** argv){
     atexit(cleanUp);
+    variableList = NULL;
 
     int PORT;
     
