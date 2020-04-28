@@ -75,7 +75,7 @@ char* getVariableData(struct exitNode* head, char* vName){
 void printList(struct exitNode* head){
     struct exitNode* pointer = head;
     while(pointer != NULL){
-        printf("%s: %s\n", pointer->variableName, pointer->variableData);
+        printf("Node: %s: %s\n", pointer->variableName, pointer->variableData);
         pointer = pointer->next;
     }
 }
