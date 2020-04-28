@@ -52,6 +52,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Received \"manifest:<projectname>\", getting project name then sending manifest.\n");
             prefixLength = 9;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            printList(variableList);
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
             chdir(getVariableData(variableList, "pName"));
             variableList = insertExit(variableList, createNode("manifestContents", concatFileSpecs(".Manifest", getVariableData(variableList, "pName")), 1));
