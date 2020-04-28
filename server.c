@@ -40,7 +40,10 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             exit(EXIT_FAILURE);
         }
 
-        if(strcmp(clientMessage, "finished") == 0) break; //client signals it is done so get out and close thread
+        if(strcmp(clientMessage, "finished") == 0){
+            //send(new_socket, "done", strlen("done") * sizeof(char), 0);
+            break; //client signals it is done so get out and close thread
+        }
 
         //given "manifest:<project name>" sends the .manifest of a project as a char*
         if(strstr(clientMessage, "manifest:") != NULL){
@@ -58,7 +61,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             prefixLength = 13;
             insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             sendProjectFiles(getVariableData(variableList, "pName"), new_socket);
-            send(new_socket, "done;", sizeof(char) * strlen("done;"), 0);
+            send(new_socket, "done", sizeof(char) * strlen("done"), 0);
             freeVariable(variableList, "pName");
         }
 
