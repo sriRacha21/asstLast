@@ -138,6 +138,7 @@ int rwFileFromSocket(int sock) {
     int bytesRead = 0;
     do {
         bytesRead = read(sock, &buffer[cursorPosition], filesize);
+        if( DEBUG ) printf("Received from server: \"%s\"\n",buffer);
         cursorPosition += bytesRead;
     } while( bytesRead > 0 && cursorPosition < filesize);
     // write out the file to the path

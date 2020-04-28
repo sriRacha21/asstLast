@@ -140,8 +140,8 @@ void checkout( int argc, char** argv ) {
     strcat(manifestRequest,"manifest:");
     strcat(manifestRequest,argv[2]);
     // send a request to the server for the manifest
-    printf("Sending request to server: %s\n", manifestRequest);
     send(sock, manifestRequest, manifestRequestLength, 0);
+    if( DEBUG ) printf("Sent request to server: \"%s\"\n", manifestRequest);
     // read a response from the server
     char* manifest = readManifestFromSocket(sock);
     // write that to ./
@@ -157,6 +157,7 @@ void checkout( int argc, char** argv ) {
     int status;
     do {
         send(sock, projectFileName, 13, 0);
+        if( DEBUG ) printf("Sent request to server: \"%s\"\n", projectFileName);
         status = rwFileFromSocket(sock);
     } while( status == 0 );
 

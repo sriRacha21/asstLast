@@ -19,10 +19,11 @@ void doesProjectExist( int sock, char* projectName ) {
     strcat(projectNameRequest,"project:");
     strcat(projectNameRequest,projectName);
     send(sock, projectNameRequest, projectNameLength, 0);
+    if( DEBUG ) printf("Sent request to server: \"%s\"\n", projectNameRequest);
     char exists[7];
     memset(exists,'\0',7);
     recv(sock, exists, 7 * sizeof(char), 0);
-    printf("Exists: %s\n",exists);
+    if( DEBUG ) printf("Received from server: \"%s\"\n",exists);
     if( strcmp(exists, "doesnt") == 0 ) {
         printf("Project does not exist on filesystem.");
         exit(1);
@@ -32,4 +33,5 @@ void doesProjectExist( int sock, char* projectName ) {
 
 void done( int sock ) {
     send(sock, "finished", 9);
+    if( DEBUG ) printf("Sent request to server: \"finished\"\n");
 }
