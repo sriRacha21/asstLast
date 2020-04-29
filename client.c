@@ -32,6 +32,7 @@ void configure( int argc, char** argv );
 void checkout( int argc, char** argv );
 void update( int argc, char** argv );
 void upgrade( int argc, char** argv );
+void commit( int argc, char** argv );
 void md5hash(char* input, char* buffer);
 
 /*  HELPERS */
@@ -97,6 +98,7 @@ int main( int argc, char** argv ) {
     if( strcmp(argv[1],"checkout") == 0 ) checkout( argc, argv );
     if( strcmp(argv[1],"update") == 0 ) update( argc, argv );
     if( strcmp(argv[1],"upgrade") == 0 ) upgrade( argc, argv );
+    if( strcmp(argv[1],"commit") == 0 ) commit( argc, argv );
 
     // tell server we are done making requests
     done(sock);
@@ -198,7 +200,7 @@ void update( int argc, char** argv ) {
         return;
     }
     // check for difference between local manifest and server manifest
-    char serverHash[16], clientHash[16];
+    char serverHash[17], clientHash[17];
     md5hash(serverManifest, serverHash);
     md5hash(clientManifest, clientHash);
     int isDifferent = strcmp(serverHash,clientHash) == 0 ? 0 : 1;
@@ -334,9 +336,9 @@ void upgrade( int argc, char** argv ) {
     doesProjectExist(sock, argv[2]);
 
     // check if .Update exists, exit if it does not
-    if( access( ".Update", F_OK ) < 0 ) fatalError(".Update does not exist.");
+    if( access( ".Update", F_OK ) < 0 ) fatalError(".Update does not exist. Do an update.");
     // check if .Conflict exists, exit if it does
-    if( access( ".Conflict", F_OK ) >= 0 ) fatalError("A conflict exists in your project.");
+    if( access( ".Conflict", F_OK ) >= 0 ) fatalError("A conflict exists in your project. Resolve the conflicts and update.");
     
     // check if .Update is empty, delete the file, and tell user project is up-to-date
     char* updateContents = readFile(".Update");
@@ -369,14 +371,97 @@ void upgrade( int argc, char** argv ) {
             // save pointer to tokenize
             char* savePtrManifest;
             char* oldManifestEntry = strtok_r(oldManifestContents,"\n",&savePtrManifest);
+            writeFileAppend(newManifestFd, oldManifestEntry);
             while( oldManifestEntry != NULL ) {
                 // move token
                 oldManifestEntry = strtok_r(NULL,"\n",&savePtrManifest);
+                // save ptr for entry elements
+                char* savePtrManifestEntry;
+                // save parts of entry
+                int manifestVersion = atoi(strtok_r(oldManifestEntry," ",&savePtrManifestEntry));
+                char* manifestFilepath = strtok_r(NULL," ",&savePtrManifestEntry);
+                char* manifestHash = strtok_r(NULL," ",&savePtrManifestEntry);
+                // if file paths don't match write the entry
+                if( strcmp(manifestFilepath,filepath) != 0 )
+                    writeFileAppend(newManifestFd, oldManifestEntry);
             }
+        } else if( tag[0] == 'M' || tag[0] == 'A' ) {
+            if( tag[0] == 'M' ) remove(filepath);
+            // build request to server
+            int projectFileNameLength = strlen("specific project file:") + strlen(argv[2]) + strlen(":") + strlen(filepath) + 1;
+            char* projectFileName = (char*)malloc(projectFileNameLength);
+            memset(projectFileName,'\0',projectFileNameLength);
+            strcat(projectFileName,"specific project file:");
+            strcat(projectFileName,argv[2]);
+            strcat(projectFileName,":");
+            strcat(projectFileName,filepath);
+            // send request to server
+            send(sock, projectFileName, projectFileNameLength, 0);
+            // read the file and output it
+            rwFileFromSocket(sock);
         }
         // update tokenizer
         updateEntry = strtok_r(NULL,"\n",&savePtrUpdate);
     }
+    // delete the update file
+    remove(".Update");
     // free
     free(updateContents);
+}
+
+void commit( int argc, char** argv ) {
+    if( argc != 3 ) fatalError("Too few or too many arguments for commit! Project name is a required argument.");
+
+    // check if the project exists on the server
+    doesProjectExist(sock, argv[2]);
+
+    // tell server we need the manifest, assume send is blocking
+    int manifestRequestLength = strlen("manifest:") + strlen(argv[2]) + 1;
+    char* manifestRequest = (char*)malloc(manifestRequestLength);
+    memset(manifestRequest,'\0',manifestRequestLength);
+    strcat(manifestRequest,"manifest:");
+    strcat(manifestRequest,argv[2]);
+    // send a request to the server for the manifest
+    send(sock, manifestRequest, 9, 0);
+    // fail if the client cannot fetch server manifest
+    char* serverManifest = readManifestFromSocket(sock);
+    if( strlen(serverManifest) == 0 ) fatalError("The server's .Manifest could not be fetched.");
+    // fail if the client has a non-empty .Update file
+    // fail if the file exists and is non-empty
+    if( access(".Update", F_OK) == 0 ) {
+        char* updateContents = readFile(".Update");
+        if( strlen(updateContents) > 0 )
+            fatalError(".Update exists.");
+        free(updateContents);
+    }
+    if( access(".Conflict", F_OK) < 0 ) fatalError(".Conflict exists ");
+    // fail if manifest versions don't match
+    if( access(".Manifest", F_OK) < 0 ) fatalError("Local .Manifest does not exist.");
+    char* clientManifest = readFile(".Manifest");
+    int clientManifestVersion = atoi(strtok(clientManifest,"\n"));
+    int serverManifestVersion = atoi(strtok(serverManifest,"\n"));
+    if( clientManifestVersion != serverManifestVersion ) fatalError("Please update your local project to commit.");
+    // open the .Commit file
+    int commitFd = open( ".Commit", O_CREAT | O_RDWR | O_APPEND );
+    // run through client manifest and compute a live hash for each file listed in it
+    char* savePtrManifest;
+    char* manifestEntry = strtok_r(clientManifest,"\n",&savePtrManifest);
+    while( manifestEntry != NULL ) {
+        // update the token
+        manifestEntry = strtok_r(NULL,"\n",&savePtrManifest);
+        // save pointer for entries
+        char* savePtrManifestEntry;
+        // save the version, filepath, hash
+        int version = atoi(strtok_r(manifestEntry," ",&savePtrManifestEntry));
+        char* filepath = strtok_r(NULL," ",&savePtrManifestEntry);
+        char* hash = strtok_r(NULL," ",&savePtrManifestEntry);
+        // compute live hash for file
+        char* file = readFile(filepath);
+        // store live hash
+        char liveHash[17];
+        md5hash(file,liveHash);
+        // if the hashes are different add to .Commit
+        // if( strcmp(hash,liveHash) != 0 ) writeFileAppend(commitFd,)
+        printf("WIP!\n");
+    }
 }

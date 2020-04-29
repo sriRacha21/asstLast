@@ -122,6 +122,10 @@ int rwFileFromSocket(int sock) {
     // turn the string into unsigned long
     unsigned long filesize = strtoul(sizeStr, NULL, 10);
     if( DEBUG ) printf("file size: %lu\n", filesize);
+    if( filesize == 0 ) {
+        printf("Warning attempting to retrieve empty or non-existent file from server!");
+        return;
+    }
     // get the file path
     char filenameStr[MAXSIZESIZE];
     cursorPosition = 0;

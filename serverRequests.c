@@ -32,6 +32,6 @@ void doesProjectExist( int sock, char* projectName ) {
 }
 
 void done( int sock ) {
-    send(sock, "finished", 9);
+    send(sock, "finished", 9, 0);
     if( DEBUG ) printf("Sent request to server: \"finished\"\n");
 }
