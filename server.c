@@ -84,7 +84,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printList(variableList);
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
             projectExists(getVariableData(variableList, "pName"), new_socket); //sends "exists" if project exists and "doesnt" if it doesnt exist
-            freeVariable(variableList, "pName");
+            variableList = freeVariable(variableList, "pName");
             printf("Finished verifying existence.\n");
         }
     }
