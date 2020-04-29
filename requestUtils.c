@@ -14,8 +14,36 @@
 #include "fileIO.h"
 #include "requestUtils.h"
 #include "manifestControl.h"
+#include "exitLeaks.h"
 
-void sendProjectFiles(char* projectName, int socket){
+char* getSpecificFileSpecs(char* projectName, char* filePath){
+    int fileSize = getFileSize(filePath);
+    int fileSizeIntLength = lengthOfInt(fileSize);
+    char* fileSizeStr = malloc(sizeof(char) * (fileSizeIntLength+1));
+    sprintf(fileSizeStr, "%d", fileSize);
+    fileSizeStr[strlen(fileSizeStr)] = '\0';
+
+    char* fileContents = readFile(filePath);
+
+    char* fullFileSpecs = malloc(sizeof(char) * (strlen(fileSizeStr) + 1 + strlen(filePath) + 1 + strlen(fileContents) + 1));
+    memset(fullFileSpecs, '\0', sizeof(char) * (strlen(fileSizeStr) + 1 + strlen(filePath) + 1 + strlen(fileContents) + 1));
+    //build string
+    strcat(fullFileSpecs, fileSizeStr);
+    strcat(fullFileSpecs, ";");
+    strcat(fullFileSpecs, filePath);
+    strcat(fullFileSpecs, ";");
+    strcat(fullFileSpecs, fileContents);
+    fullFileSpecs[strlen(fullFileSpecs)] = '\0';
+    if(fileContents == NULL || fullFileSpecs == NULL){
+        perror("File read error");
+        exit(EXIT_FAILURE);
+    }
+    free(fileContents);
+    free(fileSizeStr);
+    return fullFileSpecs;
+}
+
+void sendProjectFiles(char* projectName, int socket){ //used in "project file:<project name"
     char path[256];
     struct dirent* dirPointer;
     DIR* currentDir = opendir(projectName);
@@ -24,7 +52,7 @@ void sendProjectFiles(char* projectName, int socket){
         if(strcmp(dirPointer->d_name, ".") != 0 && strcmp(dirPointer->d_name, "..") != 0){
             if(dirPointer->d_type == 8){
                 char* fileSpecs = concatFileSpecsWithPath(dirPointer->d_name, projectName);
-                send(socket, fileSpecs, sizeof(char) * strlen(fileSpecs), 0);
+                send(socket, fileSpecs, sizeof(char) * strlen(fileSpecs)+1, 0);
                 free(fileSpecs);
             }
             strcpy(path, projectName);
@@ -120,7 +148,7 @@ int getFileSize(char* fileName){
     return position+1;
 }
 
-char* getProjectName(char* msg, int prefixLength){
+char* getProjectName(char* msg, int prefixLength){ 
     int newLength = strlen(msg) - prefixLength;
     char* pName = malloc(sizeof(char) * (newLength+1));
     strncpy(pName, msg+prefixLength, newLength);
@@ -128,7 +156,7 @@ char* getProjectName(char* msg, int prefixLength){
     return pName;
 }
 
-char* specificFileStringManip(char* msg, int prefixLength, int pathOrProject){ //pathOrProject = 1 for path 0 for project
+char* specificFileStringManip(char* msg, int prefixLength, int pathOrProject){ //pathOrProject = 1 for path 0 for project used in "specific project file:<project name"
     int subLength = strlen(msg) - prefixLength;
     char* substring = malloc(sizeof(char) * (subLength+1));
     strncpy(substring, msg+prefixLength, subLength);
@@ -150,7 +178,7 @@ char* specificFileStringManip(char* msg, int prefixLength, int pathOrProject){ /
     return info;
 }
 
-void projectExists(char* projectName, int socket){//goes through current directory and tries to find if projectName exists
+void projectExists(char* projectName, int socket){//used in "project:<project name>"
     struct dirent* dirPointer;
     DIR* currentDir = opendir("."); //idk if this is right
     if(currentDir == NULL){

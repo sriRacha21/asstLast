@@ -1,3 +1,4 @@
+char* getSpecificFileSpecs(char* projectName, char* filePath);
 void sendProjectFiles(char* projectName, int socket);
 char* concatFileSpecs(char* fileName, char* projectName); //0 = <size>;<content> 1 = <size>;<path>;<content>
 char* concatFileSpecsWithPath(char* fileName, char* projectName);

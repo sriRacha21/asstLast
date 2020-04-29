@@ -57,7 +57,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             chdir(getVariableData(variableList, "pName"));
             variableList = insertExit(variableList, createNode("manifestContents", concatFileSpecs(".Manifest", getVariableData(variableList, "pName")), 1));
             printf("Sending .Manifest data.\n");
-            send(new_socket, getVariableData(variableList, "manifestContents"), sizeof(char) * strlen(getVariableData(variableList, "manifestContents")), 0);
+            send(new_socket, getVariableData(variableList, "manifestContents"), sizeof(char) * strlen(getVariableData(variableList, "manifestContents")+1), 0);
             variableList = freeVariable(variableList, "manifestContents");
             variableList = freeVariable(variableList, "pName");
             chdir(".");
@@ -71,6 +71,14 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             variableList = insertExit(variableList, createNode("pName", specificFileStringManip(clientMessage, 22, 0), 1));
             variableList = insertExit(variableList, createNode("specFilePath", specificFileStringManip(clientMessage, 22, 1), 1));
             printf("Project name: %s. File's filepath: %s.\n", getVariableData(variableList, "pName"), getVariableData(variableList, "specFilePath"));
+            variableList = insertExit(variableList, createNode("fileSpecs", 
+                getSpecificFileSpecs(getVariableData(variableList, "pName"), getVariableData(variableList, "specFilePath")), 342));
+            variableList = freeVariable(variableList, "pName");
+            variableList = freeVariable(variableList, "specFilePath");
+            printf("Received specs for specific file.  Sending file...\n");
+            send(new_socket, getVariableData(variableList, "fileSpecs"), strlen(getVariableData(variableList, "fileSpecs")), 0);
+            variableList = freeVariable(variableList, "fileSpecs");
+            printf("Finished sending specs of specific file.\n");
         }
 
         //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project
@@ -81,7 +89,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
             printf("Sending project files...\n");
             sendProjectFiles(getVariableData(variableList, "pName"), new_socket);
-            send(new_socket, "done", sizeof(char) * strlen("done"), 0);
+            send(new_socket, "done", sizeof(char) * strlen("done") + 1, 0);
             variableList = freeVariable(variableList, "pName");
             printf("Finished sending project files.\n");
         }
