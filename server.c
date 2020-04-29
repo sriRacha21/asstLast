@@ -13,6 +13,7 @@
 #include "exitLeaks.h"
 #include "requestUtils.h"
 #include "fileIO.h"
+#include "manifestControl.h"
 
 #define MAX_THREADS 60
 
@@ -52,15 +53,20 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Received \"manifest:<projectname>\", getting project name then sending manifest.\n");
             prefixLength = 9;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
-            printList(variableList);
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
             chdir(getVariableData(variableList, "pName"));
             variableList = insertExit(variableList, createNode("manifestContents", concatFileSpecs(".Manifest", getVariableData(variableList, "pName")), 1));
             printf("Sending .Manifest data.\n");
             send(new_socket, getVariableData(variableList, "manifestContents"), sizeof(char) * strlen(getVariableData(variableList, "manifestContents")), 0);
-            freeVariable(variableList, "manifestContents");
-            freeVariable(variableList, "pName");
-            printf("Finished manifest file.\n");
+            variableList = freeVariable(variableList, "manifestContents");
+            variableList = freeVariable(variableList, "pName");
+            printf("Finished sending manifest file.\n");
+        }
+
+        //given "specific project file:<project name><filepath" sends <filesize>;<file path>;<file content> for that specific file
+        else if(strstr(clientMessage, "specific project file:") != NULL){
+            printf("Received \"manifest:<projectname><filepath>\", sending file specs.\n");
+            
         }
 
         //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project
@@ -81,7 +87,6 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Received \"project:<projectname>\", getting project name then sending whether or not it exists.\n");
             prefixLength = 8;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
-            printList(variableList);
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
             projectExists(getVariableData(variableList, "pName"), new_socket); //sends "exists" if project exists and "doesnt" if it doesnt exist
             variableList = freeVariable(variableList, "pName");
