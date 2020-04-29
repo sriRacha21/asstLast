@@ -60,13 +60,15 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             send(new_socket, getVariableData(variableList, "manifestContents"), sizeof(char) * strlen(getVariableData(variableList, "manifestContents")), 0);
             variableList = freeVariable(variableList, "manifestContents");
             variableList = freeVariable(variableList, "pName");
+            chdir(".");
             printf("Finished sending manifest file.\n");
         }
 
-        //given "specific project file:<project name><filepath" sends <filesize>;<file path>;<file content> for that specific file
+        //given "specific project file:<project name>:<filepath>" sends <filesize>;<file path>;<file content> for that specific file
         else if(strstr(clientMessage, "specific project file:") != NULL){
-            printf("Received \"manifest:<projectname><filepath>\", sending file specs.\n");
-            
+            printf("Received \"manifest:<projectname>:<filepath>\", sending file specs.\n");
+            prefixLength = 22;
+            //need to make new methods
         }
 
         //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project

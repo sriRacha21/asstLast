@@ -14,6 +14,7 @@
 #include "requestUtils.h"
 #include "exitLeaks.h"
 #include "manifestControl.h"
+#include "md5.h"
 
 void createManifest(char* projectName){
     char* filePath = malloc(sizeof(char) * (strlen(projectName) + 12));

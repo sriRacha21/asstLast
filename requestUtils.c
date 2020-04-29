@@ -13,15 +13,13 @@
 #include <limits.h>
 #include "fileIO.h"
 #include "requestUtils.h"
+#include "manifestControl.h"
 
 void sendProjectFiles(char* projectName, int socket){
     char path[256];
     struct dirent* dirPointer;
     DIR* currentDir = opendir(projectName);
-    if(currentDir == NULL){
-        perror("Can't open directory");
-        exit(EXIT_FAILURE);
-    }
+    if(!currentDir) return; // end of recursion
     while((dirPointer = readdir(currentDir)) != NULL){
         if(strcmp(dirPointer->d_name, ".") != 0 && strcmp(dirPointer->d_name, "..") != 0){
             if(dirPointer->d_type == 8){
