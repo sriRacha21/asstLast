@@ -36,7 +36,7 @@ void sendProjectFiles(char* projectName, int socket){
     closedir(currentDir);
 }
 
-char* concatFileSpecs(char* fileName, char* projectName){
+char* concatFileSpecs(char* fileName, char* projectName){ //used in manifest:<project name>
     int fileSize = getFileSize(fileName); //size in bytes
     int fileSizeIntLength = lengthOfInt(fileSize); //used for string concatenation and to convert to string
     char* fileSizeStr = malloc(sizeof(char) * fileSizeIntLength+1); //allocate char array for int to string conversion
@@ -61,7 +61,7 @@ char* concatFileSpecs(char* fileName, char* projectName){
     return fullFileSpecs; 
 }
 
-char* concatFileSpecsWithPath(char* fileName, char* projectName){
+char* concatFileSpecsWithPath(char* fileName, char* projectName){ //used in project file:<projectname>
     int fileSize = getFileSize(fileName); 
     int fileSizeIntLength = lengthOfInt(fileSize); 
     char* fileSizeStr = malloc(sizeof(char) * fileSizeIntLength+1); 
@@ -126,6 +126,28 @@ char* getProjectName(char* msg, int prefixLength){
     strncpy(pName, msg+prefixLength, newLength);
     pName[newLength] = '\0'; //need null terminator to end string
     return pName;
+}
+
+char* specificFileStringManip(char* msg, int prefixLength, int pathOrProject){ //pathOrProject = 1 for path 0 for project
+    int subLength = strlen(msg) - prefixLength;
+    char* substring = malloc(sizeof(char) * (subLength+1));
+    strncpy(substring, msg+prefixLength, subLength);
+    substring[strlen(substring)] = '\0';
+
+    int placement;
+    for(placement = 0; placement < strlen(substring); placement++){
+        if(substring[placement] == ':') break;
+    }
+    int infoLength;
+    if(!pathOrProject) infoLength = placement;
+    else infoLength = subLength - placement;
+
+    char* info = malloc(sizeof(char) * (infoLength+1));
+    if(!pathOrProject) strncpy(info, substring, infoLength); //copy project name
+    else strncpy(info, substring + placement+1, infoLength-1); //copy path
+    info[strlen(info)] = '\0';
+    free(substring);
+    return info;
 }
 
 void projectExists(char* projectName, int socket){//goes through current directory and tries to find if projectName exists

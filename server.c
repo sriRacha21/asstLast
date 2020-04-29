@@ -66,9 +66,11 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         //given "specific project file:<project name>:<filepath>" sends <filesize>;<file path>;<file content> for that specific file
         else if(strstr(clientMessage, "specific project file:") != NULL){
-            printf("Received \"manifest:<projectname>:<filepath>\", sending file specs.\n");
+            printf("Received \"specific project file:<projectname>:<filepath>\", sending file specs.\n");
             prefixLength = 22;
-            //need to make new methods
+            variableList = insertExit(variableList, createNode("pName", specificFileStringManip(clientMessage, 22, 0), 1));
+            variableList = insertExit(variableList, createNode("specFilePath", specificFileStringManip(clientMessage, 22, 1), 1));
+            printf("Project name: %s. File's filepath: %s.\n", getVariableData(variableList, "pName"), getVariableData(variableList, "specFilePath"));
         }
 
         //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project
@@ -80,7 +82,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Sending project files...\n");
             sendProjectFiles(getVariableData(variableList, "pName"), new_socket);
             send(new_socket, "done", sizeof(char) * strlen("done"), 0);
-            freeVariable(variableList, "pName");
+            variableList = freeVariable(variableList, "pName");
             printf("Finished sending project files.\n");
         }
 
