@@ -116,12 +116,13 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             prefixLength = 8;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s.  Destroying...\n", getVariableData(variableList, "pName"));
-            int success = 0;
-            success = destroyFiles(getVariableData(variableList, "pName"));
-            success = destroyFolders(getVariableData(variableList, "pName"));
-            success = destroyFolders(getVariableData(variableList, "pName"));
-            success = destroyFolders(getVariableData(variableList, "pName"));
-            printf("%s has been destroyed.  May it rest in peace.\n", getVariableData(variableList, "pName"));
+            int success = destroyProject(getVariableData(variableList, "pName"));
+            variableList = freeVariable(variableList, "pName");
+            if(success) printf("Project has been destroyed.  May it rest in peace.\n");
+            else{
+                printf("Could not destroy project. Closing thread...\n");
+                break;
+            }
             send(new_socket, "done", sizeof(char) * strlen("done") + 1, 0);
         }
     }

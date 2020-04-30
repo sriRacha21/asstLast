@@ -1,5 +1,6 @@
-int destroyFiles(char* projectName);
-int destroyFolders(char* projectName);
+int destroyProject(char* projectName);
+void destroyFiles(char* projectName);
+void destroyFolders(char* projectName);
 char* getSpecificFileSpecs(char* projectName, char* filePath);
 void sendProjectFiles(char* projectName, int socket);
 char* concatFileSpecs(char* fileName, char* projectName); //0 = <size>;<content> 1 = <size>;<path>;<content>
