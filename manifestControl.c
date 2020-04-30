@@ -31,7 +31,7 @@ void createManifest(char* projectName){
     strcat(filePath, "/.Manifest");
     writeFile(filePath, "0\n"); //create .Manifest in project folder
 
-    fillManifest(projectName, filePath);
+    //fillManifest(projectName, filePath);
 }
 
 void fillManifest(char* ogPath, char* writeTo){

@@ -126,6 +126,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             send(new_socket, "done", sizeof(char) * strlen("done") + 1, 0);
         }
 
+        //given "current version:<project name> by client, retreives and sends project's current version from the active .Manifest"
         else if(strstr(clientMessage, "current version:") != NULL){
             printf("Received \"current version:<project name>\", fetching and sending current version of the project as listed in the .Manifest.\n");
             prefixLength = 16;
@@ -138,8 +139,20 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             variableList = freeVariable(variableList, "pName");
             variableList = freeVariable(variableList, "currentVersion");
         }
+
+        //given "create:<project name>" by client, retrieves project name, creates the folder, and then initializes a .Manifest that holds "0\n" and sends "done" after
+        else if(strstr(clientMessage, "create:") != NULL){
+            printf("Received \"create:<project name>\", fetching project name and creating directory and initializing .Manifest file.\n");
+            prefixLength = 7;
+            variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            printf("Project name: %s.  Creating...\n", getVariableData(variableList, "pName"));
+            createProjectFolder(getVariableData(variableList, "pName"));
+            printf("Project has been created.\n");
+            send(new_socket, "done", sizeof(char) * (strlen("done")+1), 0);
+        }
     }
     
+    freeAllMallocs(variableList);
     pthread_mutex_unlock(&lock);
     printf("Exited new client thread.\n");
     close(new_socket);
