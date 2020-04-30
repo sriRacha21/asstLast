@@ -20,7 +20,7 @@ void createManifest(char* projectName){
     char* filePath = malloc(sizeof(char) * (strlen(projectName) + 12));
     strcat(filePath, projectName);
     strcat(filePath, "/.Manifest");
-    writeFile(filePath, ""); //create .Manifest in project folder
+    writeFile(filePath, "0\n"); //create .Manifest in project folder
 
     fillManifest(projectName, filePath);
 }
@@ -39,6 +39,16 @@ void fillManifest(char* ogPath, char* writeTo){
                 writeFileAppend(fd, "/");
                 writeFileAppend(fd, dirPointer->d_name);
                 writeFileAppend(fd, " ");
+
+                char* relativePath = malloc(sizeof(char) * (strlen(ogPath) + 1 + strlen(dirPointer->d_name) + 1));
+                strcat(relativePath, ogPath);
+                strcat(relativePath, "/");
+                strcat(relativePath, dirPointer->d_name);
+                relativePath[strlen(relativePath)] = '\0';
+                char* hashTransposed = convertHash(relativePath);
+                writeFileAppend(fd, hashTransposed);
+                free(hashTransposed);
+
                 writeFileAppend(fd, "\n");
             }
             strcpy(path, ogPath);
@@ -48,4 +58,33 @@ void fillManifest(char* ogPath, char* writeTo){
         }
     }
     closedir(currentDir);
+}
+
+char* convertHash(char* filePath){
+    char* fileContents = readFile(filePath);
+    char hashBuffer[17];
+    memset(hashBuffer, '\0', 17);
+    md5hash(fileContents, hashBuffer);
+    free(fileContents);
+    char* hashTransposed = malloc(sizeof(char) * 34);
+    memset(hashTransposed, '\0', 34);
+    int i;
+    for(i = 0; i < strlen(hashBuffer); i++){
+        sprintf(&hashTransposed[i], "%02x", hashBuffer[i]);
+    }
+    return hashTransposed;
+}
+
+void sortManifest(char* projectName){
+    chdir(projectName);
+    char* manifestContents = readFile(".Manifest");
+    char* token;
+    int i = 1;
+    token = strtok(manifestContents, "\n");
+    while(token != NULL){
+        printf("Token %d: %s\n", i, token);
+        token = strtok(NULL, "\n");
+        i++;
+    }
+    chdir(".");
 }
