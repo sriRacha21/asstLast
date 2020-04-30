@@ -19,6 +19,7 @@
 #include "serverRequests.h"
 #include "../md5.h"
 #include "../manifestControl.h"
+#include "../server/requestUtils.h"
 
 // definitions
 #define FALSE 0
@@ -34,7 +35,7 @@ void checkout( int argc, char** argv );
 void update( int argc, char** argv );
 void upgrade( int argc, char** argv );
 void commit( int argc, char** argv );
-void md5hash(char* input, char* buffer);
+void push( int argc, char** argv );
 
 /*  HELPERS */
 void warning(char* message) { printf("Warning: %s\n"); }
@@ -92,6 +93,7 @@ int main( int argc, char** argv ) {
     if( strcmp(argv[1],"update") == 0 ) update( argc, argv );
     if( strcmp(argv[1],"upgrade") == 0 ) upgrade( argc, argv );
     if( strcmp(argv[1],"commit") == 0 ) commit( argc, argv );
+    if( strcmp(argv[1],"push") == 0 ) push( argc, argv );
 
     // tell server we are done making requests
     done(sock);
@@ -441,7 +443,7 @@ void commit( int argc, char** argv ) {
             fatalError(".Update exists.");
         free(updateContents);
     }
-    if( access(".Conflict", F_OK) < 0 ) fatalError(".Conflict exists ");
+    if( access(".Conflict", F_OK) == 0 ) fatalError(".Conflict exists ");
     // fail if manifest versions don't match
     if( access(".Manifest", F_OK) < 0 ) fatalError("Local .Manifest does not exist.");
     char* clientManifest = readFile(".Manifest");
@@ -553,4 +555,51 @@ void commit( int argc, char** argv ) {
     free(clientManifest);
     free(serverManifestEntries);
     free(clientManifestEntries);
+}
+
+void push( int argc, char** argv ) {
+    if( argc != 3 ) fatalError("Too few or too many arguments for push! Project name is a required argument.");
+
+    // check if the project exists on the server
+    doesProjectExist(sock, argv[2]);
+
+    // fail if there is no .Commit file
+    if( access(".Commit", F_OK) < 0 ) fatalError(".Commit does not exist.");
+
+    // send over commit file
+    char* commitFileSend = concatFileSpecsWithPath(".Commit",argv[2]);
+    send(sock, commitFileSend, strlen(commitFileSend) + 1, 0);
+    // read commit file
+    char* commitContents = readFile(".Commit");
+    // send over every file in .Commit
+    // tokenize commit
+    char* savePtrCommitEntry;
+    char* commitEntry = strtok_r(commitContents,"\n",&savePtrCommitEntry);
+    while( commitEntry != NULL ) {
+        char* savePtrCommitEntryData;
+        // tokenize parts within commit entry
+        char* changeCode = strtok_r(commitEntry," ",&savePtrCommitEntryData);
+        int version = atoi(strtok_r(NULL," ",&savePtrCommitEntryData));
+        char* filepath = strtok_r(NULL," ",&savePtrCommitEntryData);
+        char* hash = strtok_r(NULL," ",&savePtrCommitEntryData);
+        // get the file contents and send them to server
+        char* filecontentFormatted = concatFileSpecsWithPath(filepath, argv[2]);
+        send(sock, filecontentFormatted, strlen(filecontentFormatted) + 1, 0);
+        free(filecontentFormatted);
+        // get next entry
+        commitEntry = strtok_r(NULL,"\n",&savePtrCommitEntry);
+    }
+    // tell server we are done sending files
+    send(sock,"done",strlen("done")+1,0);
+    // get server success
+    char maybeSucc[5];
+    read(sock,maybeSucc,5);
+    if( strcmp(maybeSucc,"fail") == 0 ) {
+        printf("Push failed\n");
+    }
+    // remove commit on either response
+    remove(".Commit");
+    // free
+    free(commitContents);
+    free(commitFileSend);
 }
