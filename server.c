@@ -100,9 +100,14 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             prefixLength = 8;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
-            projectExists(getVariableData(variableList, "pName"), new_socket); //sends "exists" if project exists and "doesnt" if it doesnt exist
+            int success = projectExists(getVariableData(variableList, "pName"), new_socket); //sends "exists" if project exists and "doesnt" if it doesnt exist
             variableList = freeVariable(variableList, "pName");
             printf("Finished verifying existence.\n");
+            if(success == 0){
+                printf("Project doesn't exist.  Closing thread...\n");
+                break;
+            }
+            else printf("Project exists.\n");
         }
     }
     

@@ -178,7 +178,7 @@ char* specificFileStringManip(char* msg, int prefixLength, int pathOrProject){ /
     return info;
 }
 
-void projectExists(char* projectName, int socket){//used in "project:<project name>"
+int projectExists(char* projectName, int socket){//used in "project:<project name>"
     struct dirent* dirPointer;
     DIR* currentDir = opendir("."); //idk if this is right
     if(currentDir == NULL){
@@ -189,9 +189,10 @@ void projectExists(char* projectName, int socket){//used in "project:<project na
         if(strcmp(projectName, dirPointer->d_name) == 0 && dirPointer->d_type == 4){
             closedir(currentDir);
             send(socket, "exists", strlen("exists") * sizeof(char)+1, 0);
-            return;
+            return 1;
         } 
     }
     closedir(currentDir);
     send(socket, "doesnt", strlen("exists") * sizeof(char)+1, 0);
+    return 0;
 }

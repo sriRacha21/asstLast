@@ -6,4 +6,4 @@ int lengthOfInt(int num);
 int getFileSize(char* fileName);
 char* getProjectName(char* msg, int prefixLength);
 char* specificFileStringManip(char* msg, int prefixLength, int pathOrProject);
-void projectExists(char* projectName, int socket);
+int projectExists(char* projectName, int socket);
