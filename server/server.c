@@ -81,7 +81,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Finished sending specs of specific file.\n");
         }
 
-        //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project
+        //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project, then "done"
         else if(strstr(clientMessage, "project file:") != NULL){
             printf("Received \"project file:<projectname>\", getting project name then sending all project files.\n");
             prefixLength = 13;
@@ -108,6 +108,21 @@ void* clientThread(void* use){ //handles each client thread individually via mul
                 break;
             }
             else printf("Project exists.\n");
+        }
+
+        //given "destroy:<project name>" by client, destroys project's files and subdirectories and sends "done" when finished
+        else if(strstr(clientMessage, "destroy:") != NULL){
+            printf("Received \"destroy:<project name\", removing and files and subdirectories of project.");
+            prefixLength = 8;
+            variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            printf("Project name: %s.  Destroying...\n", getVariableData(variableList, "pName"));
+            int success = 0;
+            success = destroyFiles(getVariableData(variableList, "pName"));
+            success = destroyFolders(getVariableData(variableList, "pName"));
+            success = destroyFolders(getVariableData(variableList, "pName"));
+            success = destroyFolders(getVariableData(variableList, "pName"));
+            printf("%s has been destroyed.  May it rest in peace.\n", getVariableData(variableList, "pName"));
+            send(new_socket, "done", sizeof(char) * strlen("done") + 1, 0);
         }
     }
     
