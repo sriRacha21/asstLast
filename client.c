@@ -18,6 +18,7 @@
 #include "fileIO.h"
 #include "serverRequests.h"
 #include "md5.h"
+#include "manifestControl.h"
 
 // definitions
 #define FALSE 0
@@ -44,14 +45,6 @@ void fatalError(char* message) {
 
 // globals
 int sock;
-
-/*  HASH FUNCTION (MD5)  */
-void md5hash(char* input, char* buffer) {
-    MD5_CTX md5;
-    MD5_Init(&md5);
-    MD5_Update(&md5,input,strlen(input));
-    MD5_Final(buffer,&md5);
-}
 
 /*  PROGRAM BODY    */
 int main( int argc, char** argv ) {
@@ -263,31 +256,41 @@ void update( int argc, char** argv ) {
             int serverVersion = serverManifestEntries[i].version;
             char* serverPath = serverManifestEntries[i].path;
             char* serverHash = serverManifestEntries[i].hash;
+            // write hash to hex
+            char* hexHash = convertHashGivenHash(serverHash);
 
-            char* toWrite = (char*)malloc(strlen(serverPath)+strlen(serverHash)+5);
-            sprintf(toWrite, "D %s %s\n",serverPath,serverHash);
+            char* toWrite = (char*)malloc(strlen(serverPath)+strlen(hexHash)+5);
+            sprintf(toWrite, "D %s %s\n",serverPath,hexHash);
             printf("D %s\n",serverPath);
             writeFileAppend(fdUpdate, toWrite);
             free(toWrite);
+            free(hexHash);
         // if the server has more entries (server has files that were added)
         } else if( i >= numServerManifestEntries ) {
             int clientVersion = clientManifestEntries[i].version;
             char* clientPath = clientManifestEntries[i].path;
             char* clientHash = clientManifestEntries[i].hash;
+            // write hash to hex
+            char* hexHash = convertHashGivenHash(clientHash);
 
-            char* toWrite = (char*)malloc(strlen(clientPath)+strlen(clientHash)+5);
-            sprintf(toWrite, "A %s %s\n",clientPath,clientHash);
+            char* toWrite = (char*)malloc(strlen(clientPath)+strlen(hexHash)+5);
+            sprintf(toWrite, "A %s %s\n",clientPath,hexHash);
             printf("D %s\n",clientPath);
             writeFileAppend(fdUpdate, toWrite);
             free(toWrite);
+            free(hexHash);
         } else {
             int clientVersion = clientManifestEntries[i].version;
             char* clientPath = clientManifestEntries[i].path;
             char* clientHash = clientManifestEntries[i].hash;
+            // write hash to hex
+            char* clientHexHash = convertHashGivenHash(clientHash);
 
             int serverVersion = serverManifestEntries[i].version;
             char* serverPath = serverManifestEntries[i].path;
             char* serverHash = serverManifestEntries[i].hash;
+            // write hash to hex
+            char* serverHexHash = convertHashGivenHash(serverHash);
 
             // if a difference is found, and the user did not change the file add a line to .Update (writeFileAppend) and output information to stdout
             // check if there is a difference between the local and server hash
@@ -296,10 +299,11 @@ void update( int argc, char** argv ) {
             char* fileContents = readFile(clientPath);
             char liveHash[16];
             md5hash(fileContents,liveHash);
+            char* liveHexHash = convertHashGivenHash(liveHash);
             // if the user did not change the file write out to .Update
             if( strcmp(liveHash,clientHash) == 0 ) {
-                char* toWrite = (char*)malloc(strlen(serverPath)+strlen(serverHash)+5);
-                sprintf(toWrite, "M %s %s\n", serverPath, serverHash);
+                char* toWrite = (char*)malloc(strlen(serverPath)+strlen(serverHexHash)+5);
+                sprintf(toWrite, "M %s %s\n", serverPath, serverHexHash);
                 printf("M %s\n", clientPath);
                 writeFileAppend(fdUpdate, toWrite);
                 free(toWrite);
@@ -308,14 +312,17 @@ void update( int argc, char** argv ) {
                 conflicting = TRUE;
                 fdConflict = open(".Conflict", O_APPEND | O_CREAT | O_RDWR);
 
-                char* toWrite = (char*)malloc(strlen(serverPath)+strlen(liveHash)+5);
-                sprintf(toWrite, "C %s %s\n", serverPath, liveHash);
+                char* toWrite = (char*)malloc(strlen(serverPath)+strlen(liveHexHash)+5);
+                sprintf(toWrite, "C %s %s\n", serverPath, liveHexHash);
                 printf("C %s\n", clientPath);
                 writeFileAppend(fdUpdate, toWrite);
                 free(toWrite);
             }
             // free
             free(fileContents);
+            free(serverHexHash);
+            free(clientHexHash);
+            free(liveHexHash);
         }
     }
     // delete .Update if there is a conflict
@@ -494,20 +501,22 @@ void commit( int argc, char** argv ) {
         char liveHash[17];
         char* filecontents = readFile(clientManifestEntry.path);
         md5hash(filecontents, liveHash);
+        char* clientHexHash = convertHashGivenHash(clientManifestEntry.hash);
+        char* liveHexHash = convertHashGivenHash(liveHash);
         free(filecontents);
         // server has files that the client does not
         if( i >= numServerManifestEntries ) {
             // write out delete code
-            char* toWrite = (char*)malloc(1 + 1 + 4 + 1 + strlen(clientManifestEntry.path) + 1 + strlen(clientManifestEntry.hash) + 1);
-            sprintf(toWrite, "D %d %s %s\n",clientManifestEntry.version+1,clientManifestEntry.path,clientManifestEntry.hash);
+            char* toWrite = (char*)malloc(1 + 1 + 4 + 1 + strlen(clientManifestEntry.path) + 1 + strlen(clientHexHash) + 1);
+            sprintf(toWrite, "D %d %s %s\n",clientManifestEntry.version+1,clientManifestEntry.path,clientHexHash);
             printf("D %s\n",clientManifestEntry.path);
             writeFileAppend(commitFd, toWrite);
             free(toWrite);
         }
         else if( i >= numClientManifestEntries ) {
             // write out add code
-            char* toWrite = (char*)malloc(1 + 1 + 4 + 1 + strlen(clientManifestEntry.path) + 1 + strlen(clientManifestEntry.hash) + 1);
-            sprintf(toWrite, "A %d %s %s\n",clientManifestEntry.version+1,clientManifestEntry.path,clientManifestEntry.hash);
+            char* toWrite = (char*)malloc(1 + 1 + 4 + 1 + strlen(clientManifestEntry.path) + 1 + strlen(clientHexHash) + 1);
+            sprintf(toWrite, "A %d %s %s\n",clientManifestEntry.version+1,clientManifestEntry.path,clientHexHash);
             printf("A %s\n",clientManifestEntry.path);
             writeFileAppend(commitFd, toWrite);
             free(toWrite);
@@ -516,8 +525,8 @@ void commit( int argc, char** argv ) {
         // 2. the live hash of the file is different from client hash
         } else if( strcmp(clientManifestEntry.hash,serverManifestEntry.hash) == 0 && strcmp(liveHash,clientManifestEntry.hash) != 0 ) {
             // write out modify code
-            char* toWrite = (char*)malloc(1 + 1 + 4 + 1 + strlen(clientManifestEntry.path) + 1 + strlen(clientManifestEntry.hash) + 1);
-            sprintf(toWrite, "M %d %s %s\n",clientManifestEntry.version+1,clientManifestEntry.path,clientManifestEntry.hash);
+            char* toWrite = (char*)malloc(1 + 1 + 4 + 1 + strlen(clientManifestEntry.path) + 1 + strlen(clientHexHash) + 1);
+            sprintf(toWrite, "M %d %s %s\n",clientManifestEntry.version+1,clientManifestEntry.path,clientHexHash);
             printf("M %s\n",clientManifestEntry.path);
             writeFileAppend(commitFd, toWrite);
             free(toWrite);
@@ -527,8 +536,12 @@ void commit( int argc, char** argv ) {
         // 2. server has a greater file version than conflict
         if( strcmp(serverManifestEntry.hash,clientManifestEntry.hash) != 0 && serverManifestEntry.version > clientManifestEntry.version ) {
             failure = TRUE;
+            free(clientHexHash);
+            free(liveHexHash);
             break;
         }
+        free(clientHexHash);
+        free(liveHexHash);
     }
     if( failure ) {
         printf("Commit failed.\n");

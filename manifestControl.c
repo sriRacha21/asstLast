@@ -16,6 +16,14 @@
 #include "manifestControl.h"
 #include "md5.h"
 
+/*  HASH FUNCTION (MD5)  */
+void md5hash(char* input, char* buffer) {
+    MD5_CTX md5;
+    MD5_Init(&md5);
+    MD5_Update(&md5,input,strlen(input));
+    MD5_Final(buffer,&md5);
+}
+
 void createManifest(char* projectName){
     char* filePath = malloc(sizeof(char) * (strlen(projectName) + 12));
     strcat(filePath, projectName);
@@ -71,6 +79,16 @@ char* convertHash(char* filePath){
     int i;
     for(i = 0; i < strlen(hashBuffer); i++){
         sprintf(&hashTransposed[i], "%02x", hashBuffer[i]);
+    }
+    return hashTransposed;
+}
+
+char* convertHashGivenHash(char* hash) {
+    char* hashTransposed = malloc(sizeof(char) * 34);
+    memset(hashTransposed, '\0', 34);
+    int i;
+    for(i = 0; i < strlen(hash); i++){
+        sprintf(&hashTransposed[i], "%02x", hash[i]);
     }
     return hashTransposed;
 }
