@@ -16,6 +16,44 @@
 #include "../manifestControl.h"
 #include "exitLeaks.h"
 
+int destroyFiles(char* projectName){
+    char path[256];
+    struct dirent* dirPointer;
+    DIR* currentDir = opendir(projectName);
+    if(!currentDir) return; //end recursion
+    while((dirPointer = readdir(currentDir)) != NULL){
+        if(strcmp(dirPointer->d_name, ".") != 0 && strcmp(dirPointer->d_name, "..") != 0){
+            strcpy(path, projectName);
+            strcat(path, "/");
+            strcat(path, dirPointer->d_name);
+            printf("%s\n", path);
+            remove(path);
+            destroyFiles(path);
+        }
+    }
+    closedir(currentDir);
+    return 1;
+}
+
+int destroyFolders(char* projectName){
+    char path[256];
+    struct dirent* dirPointer;
+    DIR* currentDir = opendir(projectName);
+    if(!currentDir) return; //end recursion
+    while((dirPointer = readdir(currentDir)) != NULL){
+        if(strcmp(dirPointer->d_name, ".") != 0 && strcmp(dirPointer->d_name, "..") != 0){
+            strcpy(path, projectName);
+            strcat(path, "/");
+            strcat(path, dirPointer->d_name);
+            printf("%s\n", path);
+            rmdir(path);
+            destroyFolders(path);
+        }
+    }
+    closedir(currentDir);
+    return 1;
+}
+
 char* getSpecificFileSpecs(char* projectName, char* filePath){
     int fileSize = getFileSize(filePath);
     int fileSizeIntLength = lengthOfInt(fileSize);
