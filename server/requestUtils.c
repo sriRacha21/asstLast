@@ -16,6 +16,11 @@
 #include "../manifestControl.h"
 #include "exitLeaks.h"
 
+void createProjectFolder(char* projectName){ //used in "create:<project name>"
+    mkdir(projectName, S_IRWXU | S_IRWXG | S_IRWXO);
+    createManifest(projectName);
+}
+
 char* checkVersion(char* projectName){ //given "current version:<project name>" gives version from manifest. need to free what it gives
     char* path = malloc(sizeof(char) * (strlen(projectName) + 1 + 9 + 1));
     memset(path, '\0', sizeof(char) * (strlen(projectName) + 1 + 9 + 1));

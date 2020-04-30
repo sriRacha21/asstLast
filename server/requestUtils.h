@@ -1,3 +1,4 @@
+void createProjectFolder(char* projectName);
 char* checkVersion(char* projectName);
 int destroyProject(char* projectName);
 void destroyFiles(char* projectName);
