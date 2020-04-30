@@ -443,25 +443,101 @@ void commit( int argc, char** argv ) {
     if( clientManifestVersion != serverManifestVersion ) fatalError("Please update your local project to commit.");
     // open the .Commit file
     int commitFd = open( ".Commit", O_CREAT | O_RDWR | O_APPEND );
-    // run through client manifest and compute a live hash for each file listed in it
-    char* savePtrManifest;
-    char* manifestEntry = strtok_r(clientManifest,"\n",&savePtrManifest);
-    while( manifestEntry != NULL ) {
-        // update the token
-        manifestEntry = strtok_r(NULL,"\n",&savePtrManifest);
-        // save pointer for entries
-        char* savePtrManifestEntry;
-        // save the version, filepath, hash
-        int version = atoi(strtok_r(manifestEntry," ",&savePtrManifestEntry));
-        char* filepath = strtok_r(NULL," ",&savePtrManifestEntry);
-        char* hash = strtok_r(NULL," ",&savePtrManifestEntry);
-        // compute live hash for file
-        char* file = readFile(filepath);
-        // store live hash
-        char liveHash[17];
-        md5hash(file,liveHash);
-        // if the hashes are different add to .Commit
-        // if( strcmp(hash,liveHash) != 0 ) writeFileAppend(commitFd,)
-        printf("WIP!\n");
+    /*  tokenize the server manifest    */
+    // allocate space for entries in the server manifest, one struct per entry in the server manifest
+    manifestEntry* serverManifestEntries = (manifestEntry*)malloc(sizeof(manifestEntry)*lineCount(serverManifest));
+    // save pointers since we are using strtok for processing two strings at a time
+    char* savePtrServerManifest;
+    // throw away the first value because we don't need project version
+    char* serverManifestEntry = strtok_r(serverManifest, "\n", &savePtrServerManifest); // 32 bytes for hash, 1 byte for the file version, 2 bytes for spaces, and 100 bytes for file path
+    // loop over the entries in the manifest
+    int i = 0;
+    while( serverManifestEntry != NULL ) {
+        serverManifestEntry = strtok_r(NULL,"\n",&savePtrServerManifest);
+        // tokenize the entry into version, path, hash
+        char* savePtrServerManifestEntry;
+        serverManifestEntries[i].version = atoi(strtok_r(serverManifestEntry," ",&savePtrServerManifestEntry));
+        serverManifestEntries[i].path = strtok_r(NULL," ",&savePtrServerManifestEntry);
+        serverManifestEntries[i].hash = strtok_r(NULL," ",&savePtrServerManifestEntry);
+        // increment the counter
+        i++;
     }
+    int numServerManifestEntries = i;
+
+    /*  tokenize the client manifest    */
+    // allocate space for entries in the local manifest, one struct per entry in the server manifest
+    manifestEntry* clientManifestEntries = (manifestEntry*)malloc(sizeof(manifestEntry)*lineCount(clientManifest));
+    // save pointers since we are using strtok for processing two strings at a time
+    char* savePtrClientManifest;
+    // throw away the first value because we don't need project version
+    char* clientManifestEntry = strtok_r(clientManifest, "\n", &savePtrClientManifest); // 32 bytes for hash, 1 byte for the file version, 2 bytes for spaces, and 100 bytes for file path
+    // loop over the entries in the manifest
+    i = 0;
+    while( clientManifestEntry != NULL ) {
+        clientManifestEntry = strtok_r(NULL,"\n",&savePtrClientManifest);
+        // tokenize the entry into version, path, hash
+        char* savePtrClientManifestEntry;
+        clientManifestEntries[i].version = atoi(strtok_r(clientManifestEntry," ",&savePtrClientManifestEntry));
+        clientManifestEntries[i].path = strtok_r(NULL," ",&savePtrClientManifestEntry);
+        clientManifestEntries[i].hash = strtok_r(NULL," ",&savePtrClientManifestEntry);
+        // increment the counter
+        i++;
+    }
+    int numClientManifestEntries = i;
+    // process manifest entries in parallel
+    int failure = FALSE;
+    i = 0;
+    while( i < numClientManifestEntries || i < numServerManifestEntries ) {
+        manifestEntry clientManifestEntry = clientManifestEntries[i];
+        manifestEntry serverManifestEntry = serverManifestEntries[i];
+        // calculate live hash of file
+        char liveHash[17];
+        char* filecontents = readFile(clientManifestEntry.path);
+        md5hash(filecontents, liveHash);
+        free(filecontents);
+        // server has files that the client does not
+        if( i >= numServerManifestEntries ) {
+            // write out delete code
+            char* toWrite = (char*)malloc(1 + 1 + 4 + 1 + strlen(clientManifestEntry.path) + 1 + strlen(clientManifestEntry.hash) + 1);
+            sprintf(toWrite, "D %d %s %s\n",clientManifestEntry.version+1,clientManifestEntry.path,clientManifestEntry.hash);
+            printf("D %s\n",clientManifestEntry.path);
+            writeFileAppend(commitFd, toWrite);
+            free(toWrite);
+        }
+        else if( i >= numClientManifestEntries ) {
+            // write out add code
+            char* toWrite = (char*)malloc(1 + 1 + 4 + 1 + strlen(clientManifestEntry.path) + 1 + strlen(clientManifestEntry.hash) + 1);
+            sprintf(toWrite, "A %d %s %s\n",clientManifestEntry.version+1,clientManifestEntry.path,clientManifestEntry.hash);
+            printf("A %s\n",clientManifestEntry.path);
+            writeFileAppend(commitFd, toWrite);
+            free(toWrite);
+        // compare hashes and write out M if 
+        // 1. the server and client have the same hash AND
+        // 2. the live hash of the file is different from client hash
+        } else if( strcmp(clientManifestEntry.hash,serverManifestEntry.hash) == 0 && strcmp(liveHash,clientManifestEntry.hash) != 0 ) {
+            // write out modify code
+            char* toWrite = (char*)malloc(1 + 1 + 4 + 1 + strlen(clientManifestEntry.path) + 1 + strlen(clientManifestEntry.hash) + 1);
+            sprintf(toWrite, "M %d %s %s\n",clientManifestEntry.version+1,clientManifestEntry.path,clientManifestEntry.hash);
+            printf("M %s\n",clientManifestEntry.path);
+            writeFileAppend(commitFd, toWrite);
+            free(toWrite);
+        }
+        // fail if 
+        // 1. file in server has different hash than client AND 
+        // 2. server has a greater file version than conflict
+        if( strcmp(serverManifestEntry.hash,clientManifestEntry.hash) != 0 && serverManifestEntry.version > clientManifestEntry.version ) {
+            failure = TRUE;
+            break;
+        }
+    }
+    if( failure ) {
+        printf("Commit failed.\n");
+        remove(".Commit");
+    }
+
+    // free
+    free(serverManifest);
+    free(clientManifest);
+    free(serverManifestEntries);
+    free(clientManifestEntries);
 }

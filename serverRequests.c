@@ -25,7 +25,7 @@ void doesProjectExist( int sock, char* projectName ) {
     recv(sock, exists, 7 * sizeof(char), 0);
     if( DEBUG ) printf("Received from server: \"%s\"\n",exists);
     if( strcmp(exists, "doesnt") == 0 ) {
-        printf("Project does not exist on filesystem.");
+        printf("Project does not exist on filesystem.\n");
         exit(1);
     } else if( DEBUG )
         printf("Project found on filesystem!\n");
