@@ -12,8 +12,8 @@
 #include <ctype.h>
 #include "exitLeaks.h"
 #include "requestUtils.h"
-#include "fileIO.h"
-#include "manifestControl.h"
+#include "../fileIO.h"
+#include "../manifestControl.h"
 
 #define MAX_THREADS 60
 

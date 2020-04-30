@@ -11,9 +11,9 @@
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
-#include "fileIO.h"
+#include "../fileIO.h"
 #include "requestUtils.h"
-#include "manifestControl.h"
+#include "../manifestControl.h"
 #include "exitLeaks.h"
 
 char* getSpecificFileSpecs(char* projectName, char* filePath){

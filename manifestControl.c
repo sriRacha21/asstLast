@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <limits.h>
 #include "fileIO.h"
-#include "requestUtils.h"
-#include "exitLeaks.h"
+#include "server/requestUtils.h"
+#include "server/exitLeaks.h"
 #include "manifestControl.h"
 #include "md5.h"
 
