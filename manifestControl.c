@@ -15,6 +15,7 @@
 #include "server/exitLeaks.h"
 #include "manifestControl.h"
 #include "md5.h"
+#include "server/LLSort.h"
 
 /*  HASH FUNCTION (MD5)  */
 void md5hash(char* input, char* buffer) {
@@ -94,15 +95,47 @@ char* convertHashGivenHash(char* hash) {
 }
 
 void sortManifest(char* projectName){
+    globalIndex = 0;
+    struct manifestNode* tokenList = NULL;
     chdir(projectName);
+
     char* manifestContents = readFile(".Manifest");
+    remove(".Manifest");
+    writeFile(".Manifest", "");
+    int fd = open(".Manifest", O_RDWR | O_CREAT | O_APPEND);
+
     char* token;
-    int i = 1;
     token = strtok(manifestContents, "\n");
-    while(token != NULL){
-        printf("Token %d: %s\n", i, token);
+    char* version = malloc(sizeof(char) * (strlen(token)+1));
+    memset(version, '\0', sizeof(char) * (strlen(token)+1));
+    strcat(version, token);
+    version[strlen(version)] = '\0'; //get version number from first line
+    printf("Re-sorting .Manifest version: %s\n", version);
+    while(token != NULL){ //get all tokens of manifest
         token = strtok(NULL, "\n");
-        i++;
+        if(token == NULL) break;
+        char* forNode = malloc(sizeof(char) * (strlen(token)+1));
+        memset(forNode, '\0', sizeof(char) * (strlen(token)+1));
+        strcat(forNode, token);
+        forNode[strlen(forNode)] = '\0';
+        tokenList = insertManifest(tokenList, createMNode(forNode));
     }
+    int (*comparator)(void*, void*);
+    (comparator) = stringCmp;
+    insertionSort(tokenList, comparator); //sort stuff from da Linked List Baybee.
+
+    //rebuild
+    writeFileAppend(fd, version);
+    writeFileAppend(fd, "\n");
+    struct manifestNode* current = tokenList;
+    while(current != NULL){
+        writeFileAppend(fd, current->data);
+        writeFileAppend(fd, "\n");
+        current = current->next;
+    }
+
+    free(version);
+    free(manifestContents);
+    freeMList(tokenList);
     chdir(".");
 }
