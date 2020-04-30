@@ -1,3 +1,4 @@
+char* checkVersion(char* projectName);
 int destroyProject(char* projectName);
 void destroyFiles(char* projectName);
 void destroyFolders(char* projectName);

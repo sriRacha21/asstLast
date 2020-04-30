@@ -95,7 +95,7 @@ void freeAllMallocs(struct exitNode* head){
 
 void cleanUp(){ //call at atexit
     freeAllMallocs(variableList);
-    printf("Server is now shutting down.\n");
+    printf("Reached atexit().  Server is now shutting down...\n");
 }
 
 /*int main(int argc, char** argv){

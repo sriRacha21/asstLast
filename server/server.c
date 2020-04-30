@@ -112,7 +112,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         //given "destroy:<project name>" by client, destroys project's files and subdirectories and sends "done" when finished
         else if(strstr(clientMessage, "destroy:") != NULL){
-            printf("Received \"destroy:<project name\", removing and files and subdirectories of project.");
+            printf("Received \"destroy:<project name>\", removing and files and subdirectories of project.\n");
             prefixLength = 8;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s.  Destroying...\n", getVariableData(variableList, "pName"));
@@ -124,6 +124,19 @@ void* clientThread(void* use){ //handles each client thread individually via mul
                 break;
             }
             send(new_socket, "done", sizeof(char) * strlen("done") + 1, 0);
+        }
+
+        else if(strstr(clientMessage, "current version:") != NULL){
+            printf("Received \"current version:<project name>\", fetching and sending current version of the project as listed in the .Manifest.\n");
+            prefixLength = 16;
+            variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            printf("Project name: %s.  Getting version number...\n", getVariableData(variableList, "pName"));
+            variableList = insertExit(variableList, createNode("currentVersion", checkVersion(getVariableData(variableList, "pName")), 0));
+            printf("Version number: %s.  Sending...\n", getVariableData(variableList, "currentVersion"));
+            send(new_socket, getVariableData(variableList, "currentVersion"), strlen(getVariableData(variableList, "currentVersion"))+1, 0);
+            printf("Sent version number.\n");
+            variableList = freeVariable(variableList, "pName");
+            variableList = freeVariable(variableList, "currentVersion");
         }
     }
     

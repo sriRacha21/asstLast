@@ -16,6 +16,29 @@
 #include "../manifestControl.h"
 #include "exitLeaks.h"
 
+char* checkVersion(char* projectName){ //given "current version:<project name>" gives version from manifest. need to free what it gives
+    char* path = malloc(sizeof(char) * (strlen(projectName) + 1 + 9 + 1));
+    memset(path, '\0', sizeof(char) * (strlen(projectName) + 1 + 9 + 1));
+    strcat(path, projectName);
+    strcat(path, "/");
+    strcat(path, ".Manifest");
+    path[strlen(path)] = '\0';
+
+    char* fileContents = readFile(path);
+
+    char* token;
+    token = strtok(fileContents, "\n");
+    char* version = malloc(sizeof(char) * (strlen(token)+1));
+    memset(version, '\0', sizeof(char) * (strlen(token)+1));
+    strcat(version, token);
+    version[strlen(version)] = '\0'; //get version number from first line
+
+
+    free(fileContents);
+    free(path);
+    return version;
+}
+
 int destroyProject(char* projectName){ //checks if project exists, then destroys it if it does. used in "destroy:<pname"
     struct dirent* dirPointer;
     DIR* currentDir = opendir("."); //idk if this is right
