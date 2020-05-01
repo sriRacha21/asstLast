@@ -34,7 +34,6 @@ void* clientThread(void* use){ //handles each client thread individually via mul
     //client operations below, the server will act accordingly to the client's needs based on the message sent from the client.
     while(1){
         int prefixLength; //variable made so getProjectName() can appropriately find the substring of the project name based on client message
-        //char* pName; //project name
         clientMessage[0] = '\0';
         int valread = read(new_socket, clientMessage, 1024);
         if(valread < 0){
@@ -48,8 +47,13 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             break; //client signals it is done so get out and close thread
         }
 
+        //given a commit by the client, receives the commit then all the pushes by the client.
+        if(strstr(clientMessage, ".Commit") != NULL){
+
+        }
+
         //given "manifest:<project name>" sends the .manifest of a project as a char*
-        if(strstr(clientMessage, "manifest:") != NULL){
+        else if(strstr(clientMessage, "manifest:") != NULL){
             printf("Received \"manifest:<projectname>\", getting project name then sending manifest.\n");
             prefixLength = 9;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
