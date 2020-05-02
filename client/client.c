@@ -36,6 +36,8 @@ void update( int argc, char** argv );
 void upgrade( int argc, char** argv );
 void commit( int argc, char** argv );
 void push( int argc, char** argv );
+void create( int argc, char** argv );
+void destroy( int argc, char** argv );
 
 /*  HELPERS */
 void warning(char* message) { printf("Warning: %s\n"); }
@@ -94,6 +96,8 @@ int main( int argc, char** argv ) {
     if( strcmp(argv[1],"upgrade") == 0 ) upgrade( argc, argv );
     if( strcmp(argv[1],"commit") == 0 ) commit( argc, argv );
     if( strcmp(argv[1],"push") == 0 ) push( argc, argv );
+    if( strcmp(argv[1],"create") == 0 ) create( argc, argv );
+    if( strcmp(argv[1],"destroy") == 0 ) destroy( argc, argv );
 
     // tell server we are done making requests
     done(sock);
@@ -602,4 +606,34 @@ void push( int argc, char** argv ) {
     // free
     free(commitContents);
     free(commitFileSend);
+}
+
+void create( int argc, char** argv ) {
+    if( argc != 3 ) fatalError("Too few or too many arguments for create! Project name is a required argument.");
+
+    // check if the project exists on the server
+    doesntProjectExist(sock, argv[2]);
+    
+    // build request string
+    char* createRequest = (char*)malloc(strlen(argv[2]) + strlen("project:") + 1);
+    memset(createRequest,'\0',strlen(createRequest));
+    strcat(createRequest,"project:");
+    strcat(createRequest,argv[2]);
+    // send request
+    send(sock, createRequest, strlen(createRequest)+1, 0);
+}
+
+void destroy( int argc, char** argv ) {
+    if( argc != 3 ) fatalError("Too few or too many arguments for destroy! Project name is a required argument.");
+
+    // check if the project exists on the server
+    doesProjectExist(sock, argv[2]);
+
+    // build request string
+    char* destroyRequest = (char*)malloc(strlen(argv[2]) + strlen("destroy:") + 1);
+    memset(destroyRequest,'\0',strlen(destroyRequest));
+    strcat(destroyRequest,"destroy:");
+    strcat(destroyRequest,argv[2]);
+    // send request
+    send(sock, destroyRequest, strlen(destroyRequest)+1, 0);
 }
