@@ -27,11 +27,20 @@ void md5hash(char* input, char* buffer) {
 
 void createManifest(char* projectName){
     char* filePath = malloc(sizeof(char) * (strlen(projectName) + 12));
+    memset(filePath, '\0', sizeof(char) * (strlen(projectName) + 12));
     strcat(filePath, projectName);
     strcat(filePath, "/.Manifest");
     writeFile(filePath, "0\n"); //create .Manifest in project folder
 
+    char* filePath2 = malloc(sizeof(char) * (strlen(projectName) + 10));
+    memset(filePath2, '\0', sizeof(char) * (strlen(projectName) + 10));
+    strcat(filePath2, projectName);
+    strcat(filePath2, "/.History");
+    writeFile(filePath2, ""); //create .History file
+
     //fillManifest(projectName, filePath);
+    free(filePath);
+    free(filePath2);
 }
 
 void fillManifest(char* ogPath, char* writeTo){

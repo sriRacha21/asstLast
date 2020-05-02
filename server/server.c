@@ -19,7 +19,7 @@
 
 void* clientThread(void* use);
 
-//char buffer[1024] = {0};
+char buffer[1024] = {0};
 char clientMessage[256] = {0};
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_t threadID[60];
@@ -47,9 +47,22 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             break; //client signals it is done so get out and close thread
         }
 
-        //given a commit by the client, receives the commit then all the pushes by the client.
-        if(strstr(clientMessage, ".Commit") != NULL){
-
+        //given a "push:<project name>", receives the commit then all the changed files from the client. makes changes accordingly
+        if(strstr(clientMessage, "push:") != NULL){
+            printf("Received \"push:<project name>\", pushing commit into history then taking pushed files.\n");
+            prefixLength = 5;
+            variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            printf("Project name: %s\n", getVariableData(variableList, "pName"));
+            int historySuccess = rwCommitToHistory(new_socket, getVariableData(variableList, "pName"));
+            if(!historySuccess){
+                printf("History append failure\n");
+                break;
+            }
+            int rewriteSuccess = 42069;
+            while(rewriteSuccess != -342){
+                rewriteSuccess = rewriteFileFromSocket(new_socket);
+            }
+            printf("Received push\n");
         }
 
         //given "manifest:<project name>" sends the .manifest of a project as a char*

@@ -16,6 +16,107 @@
 #include "../manifestControl.h"
 #include "exitLeaks.h"
 
+int rewriteFileFromSocket(int socket){
+    // get the size of the file
+    char sizeStr[11] = {0};
+    int cursorPosition = 0;
+    int laggingCursorPosition = 0;
+    do {
+        laggingCursorPosition = cursorPosition;
+        cursorPosition += read(socket, &sizeStr[cursorPosition], 1);
+    }
+    while( sizeStr[laggingCursorPosition] != ';' );
+    sizeStr[laggingCursorPosition] = '\0';
+    // check if the string received is just "done" so we know to stop receiving
+    if( strcmp(sizeStr,"done") == 0 ) return -342;
+    // turn the string into unsigned long
+    unsigned long filesize = strtoul(sizeStr, NULL, 10);
+    if( filesize == 0 ) {
+        printf("Warning attempting to retrieve empty or non-existent file from server!");
+        return;
+    }
+    // get the file path
+    char filenameStr[256] = {0};
+    cursorPosition = 0;
+    laggingCursorPosition = 0;
+    do {
+        laggingCursorPosition = cursorPosition;
+        cursorPosition += read(socket, &filenameStr[cursorPosition], 1);
+    } while( filenameStr[cursorPosition] != ';' );
+    filenameStr[laggingCursorPosition] = '\0';
+    // read in the rest of the message
+    char* fileContent = (char*)malloc(filesize + 1);
+    memset(fileContent, '\0', filesize+1);
+    cursorPosition = 0;
+    int bytesRead = 0;
+    do {
+        bytesRead = read(socket, &fileContent[cursorPosition], filesize);
+        cursorPosition += bytesRead;
+    } while( bytesRead > 0 && cursorPosition < filesize);
+
+    //rewrite file
+    remove(filenameStr);
+    writeFile(filenameStr, fileContent);
+
+    free(fileContent);
+    return 1;
+}
+
+int rwCommitToHistory(int socket, char* projectName){
+    // get the size of the file
+    char sizeStr[11] = {0};
+    int cursorPosition = 0;
+    int laggingCursorPosition = 0;
+    do {
+        laggingCursorPosition = cursorPosition;
+        cursorPosition += read(socket, &sizeStr[cursorPosition], 1);
+    }
+    while( sizeStr[laggingCursorPosition] != ';' );
+    sizeStr[laggingCursorPosition] = '\0';
+
+    // check if the string received is just "done" so we know to stop receiving
+    if( strcmp(sizeStr,"done") == 0 ) return -342;
+    // turn the string into unsigned long
+    unsigned long filesize = strtoul(sizeStr, NULL, 10);
+    if( filesize == 0 ) {
+        printf("Warning attempting to retrieve empty or non-existent file from server!");
+        return -1;
+    }
+
+    // read in filepath
+    char filenameStr[256] = {0};
+    cursorPosition = 0;
+    laggingCursorPosition = 0;
+    do {
+        laggingCursorPosition = cursorPosition;
+        cursorPosition += read(socket, &filenameStr[cursorPosition], 1);
+    } while( filenameStr[cursorPosition] != ';' );
+    filenameStr[laggingCursorPosition] = '\0';
+
+    // read in the rest of the message
+    char* fileContent = (char*)malloc(filesize + 1);
+    memset(fileContent, '\0', filesize+1);
+    cursorPosition = 0;
+    int bytesRead = 0;
+    do {
+        bytesRead = read(socket, &fileContent[cursorPosition], filesize);
+        cursorPosition += bytesRead;
+    } while( bytesRead > 0 && cursorPosition < filesize);
+
+    // turn it into history filepath
+    memset(filenameStr, '\0', 256);
+    strcat(filenameStr, projectName);
+    strcat(filenameStr, "/.History");
+    filenameStr[strlen(filenameStr)] = '\0';
+
+    //write onto history
+    int fd = open(filenameStr, O_RDWR | O_CREAT | O_APPEND);
+    writeFileAppend(fd, fileContent);
+
+    free(fileContent);
+    return 1;
+}
+
 void createProjectFolder(char* projectName){ //used in "create:<project name>"
     mkdir(projectName, S_IRWXU | S_IRWXG | S_IRWXO);
     createManifest(projectName);
@@ -182,6 +283,7 @@ char* concatFileSpecs(char* fileName, char* projectName){ //used in manifest:<pr
 }
 
 char* concatFileSpecsWithPath(char* fileName, char* projectName){ //used in project file:<projectname>
+    chdir(projectName);
     int fileSize = getFileSize(fileName); 
     int fileSizeIntLength = lengthOfInt(fileSize); 
     char* fileSizeStr = malloc(sizeof(char) * fileSizeIntLength+1); 
@@ -219,6 +321,7 @@ char* concatFileSpecsWithPath(char* fileName, char* projectName){ //used in proj
     free(fileContents);
     free(absolutePath);
     free(relativePath);
+    chdir(".");
     return fullFileSpecs; 
 }
 

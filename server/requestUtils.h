@@ -1,3 +1,5 @@
+int rewriteFileFromSocket(int socket);
+int rwCommitToHistory(int socket, char* projectName);
 void createProjectFolder(char* projectName);
 char* checkVersion(char* projectName);
 int destroyProject(char* projectName);
