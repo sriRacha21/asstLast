@@ -8,7 +8,7 @@
 #include <fcntl.h>
 #include "definitions.h"
 
-void createParentDirectories(char* cfsResults);
+void createParentDirectories(char* path);
 char* readFile(char *filename);
 void writeFile( char *path, char *content );
 void writeFileAppend( int fd, char *content );
@@ -20,15 +20,11 @@ void createParentDirectories(char* path){ //takes in a file path and makes the p
     int i, j;
     char filePath[256] = {0};
     strcat(filePath, "mkdir -p ");
-    for(i = 0; i < strlen(cfsResults); i++){
-        if(cfsResults[i] == ';') break;
+    for(i = strlen(path); i >= 0; i--){
+        if(path[i] == '/') break;
     }
-    i++;
-    for(j = i; j < strlen(cfsResults); j++){
-        if(cfsResults[j] == ';') break;
-    }
-    strncpy(filePath + strlen(filePath), cfsResults+i, j-i);
-    //printf("%s\n", filePath);
+    strncpy(filePath + strlen(filePath), path, strlen(path) - (strlen(path) - i-1));
+    printf("%s\n", filePath);
     system(filePath);
 }
 
