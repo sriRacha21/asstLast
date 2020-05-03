@@ -15,6 +15,57 @@
 #include "requestUtils.h"
 #include "../manifestControl.h"
 #include "exitLeaks.h"
+#include "LLSort.h"
+
+int deleteFilesFromPush(char* commitContents){ //returns history number
+    char* commitCopy = malloc(sizeof(char) * (strlen(commitContents) + 1));
+    memset(commitCopy, '\0', (strlen(commitContents) + 1));
+    strcat(commitCopy, commitContents);
+    commitCopy[strlen(commitCopy)] = '\0';
+
+    char* token;
+    token = strtok(commitCopy, "\n");
+    //get version number from first token first
+    char version[11] = {0};
+    int i, j;
+    for(i = 0; i < strlen(token); i++){
+        if(token[i] == ' ') break;
+    }
+    i++;
+    for(j = i; j < strlen(token); j++){
+        if(token[j] == ' ') break;
+    }
+    strncpy(version, token+i, j-i);
+
+    //find and delete files to delete
+    while(token != NULL){
+        if(token[0] != 'D'){
+            token = strtok(NULL, "\n");
+            continue;
+        }
+
+        //found one that we need to delete, grab filepath and remove it
+        
+        int counter = 0;
+        char filePath[256] = {0}; //this is the one we are erasing from the face of the universe
+        for(i = 0; i < strlen(token); i++){
+            if(token[i] == ' ') counter ++;
+            if(counter == 2) break;
+        }
+        i++;
+
+        for(j = i; j < strlen(token); j++){
+            if(token[j] == ' ') break;
+        }
+        strncpy(filePath, token+i, j-i);
+        //printf("%s\n", filePath);
+        remove(filePath);
+        token = strtok(NULL, "\n");
+    }
+
+    free(commitCopy);
+    return atoi(version);
+}
 
 int rewriteFileFromSocket(int socket){
     // get the size of the file
@@ -65,7 +116,7 @@ int rewriteFileFromSocket(int socket){
     return 1;
 }
 
-int rwCommitToHistory(int socket, char* projectName){ //returns projects new version
+char* rwCommitToHistory(int socket, char* projectName){ //returns projects new version
     // get the size of the file
     char sizeStr[11] = {0};
     int cursorPosition = 0;
@@ -81,7 +132,7 @@ int rwCommitToHistory(int socket, char* projectName){ //returns projects new ver
     unsigned long filesize = strtoul(sizeStr, NULL, 10);
     if( filesize == 0 ) {
         printf("Warning attempting to retrieve empty or non-existent file from server!");
-        return -1;
+        return "ERRORERROR";
     }
 
     // read in filepath
@@ -104,7 +155,6 @@ int rwCommitToHistory(int socket, char* projectName){ //returns projects new ver
         cursorPosition += bytesRead;
     } while( bytesRead > 0 && cursorPosition < filesize);
 
-
     //find the version of the new push
     int i, j;
     for(i = 0; i < strlen(fileContent); i++){
@@ -114,7 +164,7 @@ int rwCommitToHistory(int socket, char* projectName){ //returns projects new ver
         if(fileContent[j] == ' ') break;
     }
     char newVersion[11] = {0};
-    strncpy(newVersion, fileContent+i+1, j-i);
+    strncpy(newVersion, fileContent+i+1, j-i); //if filecontent is mangled its bc of this
     newVersion[strlen(newVersion)] = '\0';
 
     // turn it into history filepath
@@ -130,8 +180,7 @@ int rwCommitToHistory(int socket, char* projectName){ //returns projects new ver
     writeFileAppend(fd, fileContent);
     writeFileAppend(fd, "\n");
 
-    free(fileContent);
-    return atoi(newVersion);
+    return fileContent; //return the commit content
 }
 
 void createProjectFolder(char* projectName){ //used in "create:<project name>"

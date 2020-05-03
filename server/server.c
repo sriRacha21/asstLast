@@ -53,14 +53,19 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             prefixLength = 5;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
-            //append commit to history. historySuccess will be version of new project
-            int historySuccess = rwCommitToHistory(new_socket, getVariableData(variableList, "pName"));
-            if(historySuccess == -1){
-                printf("History append failure\n");
-                break;
-            }
 
             //need to archive old project
+
+
+
+            //append commit to history, and return history contents
+            variableList = insertExit(variableList, createNode("commitContents", rwCommitToHistory(new_socket, getVariableData(variableList, "pName")), 1));
+            if(strcmp(getVariableData(variableList, "commitContents"), "ERRORERROR123SENDHELP") == 0){
+                printf("Error in appending to history.\n");
+                variableList = freeVariable(variableList, "pName");
+                variableList = freeVariable(variableList, "commitContents");
+                break;
+            }
 
             //rewrite all modified/added files
             int rewriteSuccess = 42069;
@@ -68,11 +73,15 @@ void* clientThread(void* use){ //handles each client thread individually via mul
                 rewriteSuccess = rewriteFileFromSocket(new_socket);
             }
 
-            //remake manifest
-            createManifest(getVariableData(variableList, "pName"), historySuccess);
-            
+            //delete all files meant to be deleted, and also return the version number
+            int newVersion = deleteFilesFromPush(getVariableData(variableList, "commitContents"));
+
+            //remake manifest and fill it with the new files
+            createManifest(getVariableData(variableList, "pName"), newVersion);
+
             printf("Received push.\n");
             variableList = freeVariable(variableList, "pName");
+            variableList = freeVariable(variableList, "commitContents");
         }
 
         //given "manifest:<project name>" sends the .manifest of a project as a char*

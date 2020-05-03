@@ -31,17 +31,18 @@ void createManifest(char* projectName, int versionNum){
     strcat(filePath, projectName);
     strcat(filePath, "/.Manifest"); //build filepath
 
-    remove(filePath); //if it already exists, it means we are rebuilding it.
+    remove(filePath); //if it already exists, rebuild it
 
     char version[11] = {0};
     sprintf(version, "%s", versionNum);
     version[strlen(version)] = '\0';
 
-    writeFile(filePath, version); //create .Manifest in project folder
+    writeFile(filePath, version); //create .Manifest in project folder and write the version number at the top of it
     int fd = open(filePath, O_RDWR | O_CREAT | O_APPEND);
     writeFileAppend(fd, "\n");
 
     fillManifest(projectName, filePath, versionNum);
+    sortManifest(projectName);
     free(filePath);
 }
 

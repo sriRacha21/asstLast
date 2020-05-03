@@ -9,6 +9,7 @@ struct manifestNode{
     struct manifestNode* next;
     struct manifestNode* prev;
     char* data;
+    int doWith;
     int index;
 };
 
