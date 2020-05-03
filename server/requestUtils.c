@@ -132,7 +132,7 @@ char* rwCommitToHistory(int socket, char* projectName){ //returns projects new v
     unsigned long filesize = strtoul(sizeStr, NULL, 10);
     if( filesize == 0 ) {
         printf("Warning attempting to retrieve empty or non-existent file from server!");
-        return "ERRORERROR";
+        return "ERRORERROR123SENDHELP";
     }
 
     // read in filepath
