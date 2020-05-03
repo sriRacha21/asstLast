@@ -44,6 +44,8 @@ int rewriteFileFromSocket(int socket){
         cursorPosition += read(socket, &filenameStr[cursorPosition], 1);
     } while( filenameStr[cursorPosition] != ';' );
     filenameStr[laggingCursorPosition] = '\0';
+    createParentDirectories(filenameStr);
+    
     // read in the rest of the message
     char* fileContent = (char*)malloc(filesize + 1);
     memset(fileContent, '\0', filesize+1);
@@ -54,6 +56,7 @@ int rewriteFileFromSocket(int socket){
         cursorPosition += bytesRead;
     } while( bytesRead > 0 && cursorPosition < filesize);
 
+
     //rewrite file
     remove(filenameStr);
     writeFile(filenameStr, fileContent);
@@ -62,7 +65,7 @@ int rewriteFileFromSocket(int socket){
     return 1;
 }
 
-int rwCommitToHistory(int socket, char* projectName){
+int rwCommitToHistory(int socket, char* projectName){ //returns projects new version
     // get the size of the file
     char sizeStr[11] = {0};
     int cursorPosition = 0;
@@ -74,8 +77,6 @@ int rwCommitToHistory(int socket, char* projectName){
     while( sizeStr[laggingCursorPosition] != ';' );
     sizeStr[laggingCursorPosition] = '\0';
 
-    // check if the string received is just "done" so we know to stop receiving
-    if( strcmp(sizeStr,"done") == 0 ) return -342;
     // turn the string into unsigned long
     unsigned long filesize = strtoul(sizeStr, NULL, 10);
     if( filesize == 0 ) {
@@ -103,6 +104,19 @@ int rwCommitToHistory(int socket, char* projectName){
         cursorPosition += bytesRead;
     } while( bytesRead > 0 && cursorPosition < filesize);
 
+
+    //find the version of the new push
+    int i, j;
+    for(i = 0; i < strlen(fileContent); i++){
+        if(fileContent[i] == ' ') break;
+    }
+    for(j = i + 1; j < strlen(fileContent); j++){
+        if(fileContent[j] == ' ') break;
+    }
+    char newVersion[11] = {0};
+    strncpy(newVersion, fileContent+i+1, j-i);
+    newVersion[strlen(newVersion)] = '\0';
+
     // turn it into history filepath
     memset(filenameStr, '\0', 256);
     strcat(filenameStr, projectName);
@@ -111,15 +125,19 @@ int rwCommitToHistory(int socket, char* projectName){
 
     //write onto history
     int fd = open(filenameStr, O_RDWR | O_CREAT | O_APPEND);
+    writeFileAppend(fd, newVersion);
+    writeFileAppend(fd, "\n");
     writeFileAppend(fd, fileContent);
+    writeFileAppend(fd, "\n");
 
     free(fileContent);
-    return 1;
+    return atoi(newVersion);
 }
 
 void createProjectFolder(char* projectName){ //used in "create:<project name>"
     mkdir(projectName, S_IRWXU | S_IRWXG | S_IRWXO);
-    createManifest(projectName);
+    createManifest(projectName, 0);
+    createHistory(projectName);
 }
 
 char* checkVersion(char* projectName){ //given "current version:<project name>" gives version from manifest. need to free what it gives
@@ -283,7 +301,6 @@ char* concatFileSpecs(char* fileName, char* projectName){ //used in manifest:<pr
 }
 
 char* concatFileSpecsWithPath(char* fileName, char* projectName){ //used in project file:<projectname>
-    chdir(projectName);
     int fileSize = getFileSize(fileName); 
     int fileSizeIntLength = lengthOfInt(fileSize); 
     char* fileSizeStr = malloc(sizeof(char) * fileSizeIntLength+1); 
@@ -321,7 +338,6 @@ char* concatFileSpecsWithPath(char* fileName, char* projectName){ //used in proj
     free(fileContents);
     free(absolutePath);
     free(relativePath);
-    chdir(".");
     return fullFileSpecs; 
 }
 

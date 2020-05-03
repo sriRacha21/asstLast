@@ -53,16 +53,26 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             prefixLength = 5;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
+            //append commit to history. historySuccess will be version of new project
             int historySuccess = rwCommitToHistory(new_socket, getVariableData(variableList, "pName"));
-            if(!historySuccess){
+            if(historySuccess == -1){
                 printf("History append failure\n");
                 break;
             }
+
+            //need to archive old project
+
+            //rewrite all modified/added files
             int rewriteSuccess = 42069;
             while(rewriteSuccess != -342){
                 rewriteSuccess = rewriteFileFromSocket(new_socket);
             }
-            printf("Received push\n");
+
+            //remake manifest
+            createManifest(getVariableData(variableList, "pName"), historySuccess);
+            
+            printf("Received push.\n");
+            variableList = freeVariable(variableList, "pName");
         }
 
         //given "manifest:<project name>" sends the .manifest of a project as a char*
@@ -166,6 +176,22 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             createProjectFolder(getVariableData(variableList, "pName"));
             printf("Project has been created.\n");
             send(new_socket, "done", sizeof(char) * (strlen("done")+1), 0);
+            variableList = freeVariable(variableList, "pName");
+        }
+
+        //given "history:<project name>" by client, retrives and sends the .History file belonging to the project
+        else if(strstr(clientMessage, "history:") != NULL){
+            printf("Received \"history:<project name>\", fetching then sending .History file for the project.\n");
+            prefixLength = 8;
+            variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            printf("Project name: %s.  Getting history...\n", getVariableData(variableList, "pName"));
+            chdir(getVariableData(variableList, "pName"));
+            variableList = insertExit(variableList, createNode("historyContents", concatFileSpecsWithPath(".History", 
+                getVariableData(variableList, "pName")), 0));
+            send(new_socket, getVariableData(variableList, "historyContents"), strlen(getVariableData(variableList, "historyContents")+1), 0);
+            printf("History has been sent.\n");
+            variableList = freeVariable(variableList, "pName");
+            variableList = freeVariable(variableList, "historyContents");
         }
     }
     

@@ -25,26 +25,41 @@ void md5hash(char* input, char* buffer) {
     MD5_Final(buffer,&md5);
 }
 
-void createManifest(char* projectName){
+void createManifest(char* projectName, int versionNum){
     char* filePath = malloc(sizeof(char) * (strlen(projectName) + 12));
     memset(filePath, '\0', sizeof(char) * (strlen(projectName) + 12));
     strcat(filePath, projectName);
-    strcat(filePath, "/.Manifest");
-    writeFile(filePath, "0\n"); //create .Manifest in project folder
+    strcat(filePath, "/.Manifest"); //build filepath
 
-    char* filePath2 = malloc(sizeof(char) * (strlen(projectName) + 10));
-    memset(filePath2, '\0', sizeof(char) * (strlen(projectName) + 10));
-    strcat(filePath2, projectName);
-    strcat(filePath2, "/.History");
-    writeFile(filePath2, ""); //create .History file
+    remove(filePath); //if it already exists, it means we are rebuilding it.
 
-    //fillManifest(projectName, filePath);
+    char version[11] = {0};
+    sprintf(version, "%s", versionNum);
+    version[strlen(version)] = '\0';
+
+    writeFile(filePath, version); //create .Manifest in project folder
+    int fd = open(filePath, O_RDWR | O_CREAT | O_APPEND);
+    writeFileAppend(fd, "\n");
+
+    fillManifest(projectName, filePath, versionNum);
     free(filePath);
-    free(filePath2);
 }
 
-void fillManifest(char* ogPath, char* writeTo){
+void createHistory(char* projectName){
+    char* filePath = malloc(sizeof(char) * (strlen(projectName) + 11));
+    memset(filePath, '\0', sizeof(char) * (strlen(projectName) + 11));
+    strcat(filePath, projectName);
+    strcat(filePath, "/.History");
+    writeFile(filePath, ""); ////create .History file
+    free(filePath);
+}
+
+void fillManifest(char* ogPath, char* writeTo, int version){
     char path[256] = {0};
+    char versionStr[11] = {0};
+    sprintf(versionStr, "%s", version);
+    versionStr[strlen(versionStr)] = '\0';
+
     struct dirent* dirPointer;
     DIR* currentDir = opendir(ogPath);
     if(!currentDir) return;
@@ -52,7 +67,8 @@ void fillManifest(char* ogPath, char* writeTo){
         if(strcmp(dirPointer->d_name, ".") != 0 && strcmp(dirPointer->d_name, "..") != 0){
             if(dirPointer->d_type == 8 && dirPointer->d_name[0] != '.'){
                 int fd = open(writeTo, O_RDWR | O_CREAT | O_APPEND);
-                writeFileAppend(fd, "0 ");
+                writeFileAppend(fd, versionStr);
+                writeFileAppend(fd, " ");
                 writeFileAppend(fd, ogPath);
                 writeFileAppend(fd, "/");
                 writeFileAppend(fd, dirPointer->d_name);
@@ -72,7 +88,7 @@ void fillManifest(char* ogPath, char* writeTo){
             strcpy(path, ogPath);
             strcat(path, "/");
             strcat(path, dirPointer->d_name);
-            fillManifest(path, writeTo);
+            fillManifest(path, writeTo, version);
         }
     }
     closedir(currentDir);
