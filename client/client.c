@@ -52,6 +52,10 @@ void fatalError(char* message) {
 // globals
 int sock;
 
+void doneMain() {
+    done(sock);
+}
+
 /*  PROGRAM BODY    */
 int main( int argc, char** argv ) {
     // if we need to configure, configure the file and stop
@@ -66,6 +70,8 @@ int main( int argc, char** argv ) {
     char buffer[1024] = {0};
     if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) fatalError("Socket creation error");
 
+    // make it so if the program exits we tell the server we are done
+    atexit(doneMain);
     // check if the configuration file exists
     if( access(".configure", F_OK) < 0 ) fatalError(".configure does not exist.");
 
@@ -191,7 +197,11 @@ void update( int argc, char** argv ) {
     doesProjectExist(sock, argv[2]);
 
     // build path to manifest
-    char* manifestPath = buildManifestPath(argv[2]);
+    // char* manifestPath = buildManifestPath(argv[2]); >:( i don't like compiler warning why is that happening
+    int manifestPathLength = strlen(argv[2]) + strlen("/.Manifest") + 1;
+    char* manifestPath = (char*)malloc(manifestPathLength);
+    memset(manifestPath,'\0',manifestPathLength);
+    snprintf(manifestPath,manifestPathLength,"%s/.Manifest",argv[2]);
     // check if manifest exists
     if( access(manifestPath, F_OK) < 0 ) fatalError(".Manifest does not exist.");
 
@@ -202,7 +212,7 @@ void update( int argc, char** argv ) {
     strcat(manifestRequest,"manifest:");
     strcat(manifestRequest,argv[2]);
     // send a request to the server for the manifest
-    send(sock, manifestRequest, 9, 0);
+    send(sock, manifestRequest, manifestRequestLength, 0);
     // read a response from the server
     char* serverManifest = readManifestFromSocket(sock);
     // get the local manifest
@@ -226,7 +236,7 @@ void update( int argc, char** argv ) {
     int isDifferent = strcmp(serverHash,clientHash) == 0 ? 0 : 1;
     // return if the manifests are the same
     if( !isDifferent ) { // this should never happen because we compared the first character and returned if they were the same
-        printf("Server and local manifest files are complete match. There is nothing to update.");
+        printf("Server and local manifest files are complete match. There is nothing to update.\n");
         return;
     }
     /*  tokenize the server manifest and local manifest to be able to get versions, filepaths, and hashes (in that order per line)   */
