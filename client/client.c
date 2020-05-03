@@ -38,6 +38,9 @@ void commit( int argc, char** argv );
 void push( int argc, char** argv );
 void create( int argc, char** argv );
 void destroy( int argc, char** argv );
+void add( int argc, char** argv );
+void removePr( int argc, char** argv );
+void currentVersion( int argc, char** argv );
 
 /*  HELPERS */
 void warning(char* message) { printf("Warning: %s\n"); }
@@ -98,6 +101,9 @@ int main( int argc, char** argv ) {
     if( strcmp(argv[1],"push") == 0 ) push( argc, argv );
     if( strcmp(argv[1],"create") == 0 ) create( argc, argv );
     if( strcmp(argv[1],"destroy") == 0 ) destroy( argc, argv );
+    if( strcmp(argv[1],"add") == 0 ) add( argc, argv );
+    if( strcmp(argv[1],"remove") == 0 ) removePr( argc, argv );
+    if( strcmp(argv[1],"currentversion") == 0 ) currentVersion( argc, argv );
 
     // tell server we are done making requests
     done(sock);
@@ -641,4 +647,93 @@ void destroy( int argc, char** argv ) {
     strcat(destroyRequest,argv[2]);
     // send request
     send(sock, destroyRequest, strlen(destroyRequest)+1, 0);
+}
+
+void add( int argc, char** argv ) {
+    if( argc != 4 ) fatalError("Too few or too many arguments for add! Project name and filename are required arguments.");
+
+    // check if the project exists on the server
+    doesProjectExist(sock, argv[2]);
+
+    // append to manifest file
+    int manifestFd = open(".Manifest", O_RDWR | O_APPEND );
+    // if manifest doesn't exist, exit
+    if( manifestFd < 0 ) fatalError(".Manifest was not found. Make sure there is a project in this directory.");
+
+    // calculate hash of file
+    char* hashTransposed = convertHash(argv[3]);
+    // build string we are going to write
+    int toWriteSize = strlen("0") + 1 + strlen(argv[3]) + 1 + strlen(hashTransposed) + 1;
+    char* toWrite = (char*)malloc(toWriteSize);
+    memset(toWrite,'\0',toWriteSize);
+    sprintf(toWrite,"0 %s %s\n",argv[3],hashTransposed);
+    // write string
+    writeFileAppend(manifestFd, toWrite);
+    // free
+    free(hashTransposed);
+}
+
+void removePr( int argc, char** argv ) {
+    if( argc != 4 ) fatalError("Too few or too many arguments for remove! Project name and filename are required arguments.");
+
+    // check if the project exists on the server
+    doesProjectExist(sock, argv[2]);
+
+    // build path to project folder/manifest
+    int projectFolderManifestSize = strlen(argv[2])+1+strlen(argv[3]);
+    char* projectFolderManifest = (char*)malloc(projectFolderManifestSize);
+    memset(projectFolderManifest,'\0',projectFolderManifestSize);
+    sprintf(projectFolderManifest,"%s/%s",argv[2],argv[3]);
+    // check if the old manifest file exists
+    if( access(projectFolderManifest, F_OK) < 0 ) fatalError(".Manifest does not exist. Make sure there is a project in this directory.");
+    // read in the old manifest
+    char* manifestContents = readFile(projectFolderManifest);
+    // create temporary manifest file
+    int tempManifestFd = open(".Manifest.tmp", O_RDWR | O_CREAT | O_APPEND );
+    // count lines of old manifest
+    int manifestLineCount = lineCount(projectFolderManifest);
+    // prep for manifest copying
+    char* savePtrManifest;
+    char* manifestEntry = strtok_r(manifestContents,"\n",&savePtrManifest);
+    // write out the version to the temp manifest
+    writeFileAppend(tempManifestFd,manifestEntry);
+    // copy entries in the manifest file if they don't match the filename
+    while( manifestEntry != NULL ) {
+        // update manifestEntry
+        manifestEntry = strtok(NULL,"\n");
+        // tokenize each entry
+        char* savePtrManifestEntry;
+        char* version = strtok_r(manifestEntry," ",&savePtrManifestEntry);
+        char* path = strtok_r(NULL," ",&savePtrManifestEntry);
+        char* hash = strtok_r(NULL," ",&savePtrManifestEntry);
+        // check for match
+        if( strcmp(argv[3],path) != 0 ) // if there is no match, write out
+            writeFileAppend(tempManifestFd, manifestEntry);
+    }
+    // count lines of new manifest
+    int newManifestLineCount = lineCount(".Manifest.tmp");
+    if( manifestLineCount == newManifestLineCount )
+        printf("File could not be found in manifest.");
+    // remove old manifest
+    remove(projectFolderManifest);
+    // rename new manifest, moving it to the project directory
+    rename(".Manifest.tmp",projectFolderManifest);
+    // free
+    free(manifestContents);
+}
+
+void currentVersion( int argc, char** argv ) {
+    if( argc != 3 ) fatalError("Too few or too many arguments for current version! Project name is a required argument.");
+
+    // check if the project exists on the server
+    doesProjectExist(sock, argv[2]);
+    // tell server we want current version
+    int tellVersionSize = strlen("current version:") + strlen(argv[2]) + 1;
+    char* tellVersion = (char*)malloc(tellVersionSize);
+    memset(tellVersion,'\0',tellVersionSize);
+    strcat(tellVersionSize,"current version:");
+    strcat(tellVersionSize,argv[2]);
+    send(sock,tellVersion,tellVersionSize,0);
+    // read response from server
+    printf("WIP!\n");
 }
