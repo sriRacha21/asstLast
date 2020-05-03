@@ -304,7 +304,7 @@ char* getSpecificFileSpecs(char* projectName, char* filePath){
 }
 
 void sendProjectFiles(char* projectName, int socket){ //used in "project file:<project name"
-    char path[256];
+    char path[256] = {0};
     struct dirent* dirPointer;
     DIR* currentDir = opendir(projectName);
     if(!currentDir) return; // end of recursion

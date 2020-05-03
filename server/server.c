@@ -96,7 +96,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             send(new_socket, getVariableData(variableList, "manifestContents"), sizeof(char) * strlen(getVariableData(variableList, "manifestContents")+1), 0);
             variableList = freeVariable(variableList, "manifestContents");
             variableList = freeVariable(variableList, "pName");
-            chdir(".");
+            chdir("../");
             printf("Finished sending manifest file.\n");
         }
 
@@ -122,7 +122,6 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Received \"%s\", getting project name then sending all project files.\n", clientMessage);
             prefixLength = 13;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
-            printList(variableList);
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
             printf("Sending project files...\n");
             sendProjectFiles(getVariableData(variableList, "pName"), new_socket);
