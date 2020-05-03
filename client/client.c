@@ -570,6 +570,11 @@ void push( int argc, char** argv ) {
     // fail if there is no .Commit file
     if( access(".Commit", F_OK) < 0 ) fatalError(".Commit does not exist.");
 
+    // tell server we are starting push command (push:<project name>)
+    char* tellPush = (char*)malloc(strlen("push:") + strlen(argv[2]) + 1);
+    strcat(tellPush,"push:");
+    strcat(tellPush,argv[2]);
+    send(sock, tellPush, strlen(tellPush) + 1, 0);
     // send over commit file
     char* commitFileSend = concatFileSpecsWithPath(".Commit",argv[2]);
     send(sock, commitFileSend, strlen(commitFileSend) + 1, 0);
