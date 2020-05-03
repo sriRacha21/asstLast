@@ -151,8 +151,18 @@ void checkout( int argc, char** argv ) {
     if( DEBUG ) printf("Sent request to server: \"%s\"\n", manifestRequest);
     // read a response from the server
     char* manifest = readManifestFromSocket(sock);
-    // write that to ./
-    writeFile(".Manifest", manifest);
+    // create a folder for the project
+    char* folderCreationString = (char*)malloc(strlen("mkdir ") + strlen(argv[2]) + strlen(" > /dev/null 2>&1") + 1);
+    memset(folderCreationString,'\0',strlen("mkdir ") + strlen(argv[2]) + strlen(" > /dev/null 2>&1") + 1);
+    sprintf(folderCreationString,"mkdir %s > /dev/null 2>&1",argv[2]);
+    system(folderCreationString);
+    free(folderCreationString);
+    // write that to new folder
+    int manifestLocationLength = strlen(argv[2]) + strlen("/.Manifest") + 1;
+    char* manifestLocation = (char*)malloc(manifestLocationLength);
+    sprintf(manifestLocation,"%s/.Manifest",argv[2]);
+    writeFile(manifestLocation, manifest);
+    free(manifestLocation);
     
     // build a string that will be used to request all the files in the project from the server
     int projectFileNameLength = strlen("project file:") + strlen(argv[2]) + 1;

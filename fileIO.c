@@ -111,10 +111,8 @@ char* readManifestFromSocket(int sock) {
     memset(buffer, '\0', filesize + 1);
     cursorPosition = 0;
     int bytesRead = 0;
-    do {
-        bytesRead = read(sock, &buffer[cursorPosition], filesize);
-        cursorPosition += bytesRead;
-    } while( bytesRead > 0 && cursorPosition < filesize);
+    recv(sock, buffer, filesize+1, 0);
+    if( DEBUG ) printf("Manifest contents: %s\n",buffer);
 
     return buffer;
 }
@@ -126,18 +124,21 @@ int rwFileFromSocket(int sock) {
     int laggingCursorPosition = 0;
     do {
         laggingCursorPosition = cursorPosition;
-        cursorPosition += read(sock, &sizeStr[cursorPosition], 1);
+        cursorPosition += recv(sock, &sizeStr[cursorPosition], 1, 0);
     }
     while( sizeStr[laggingCursorPosition] != DELIM );
     sizeStr[laggingCursorPosition] = '\0';
     // check if the string received is just "done" so we know to stop receiving
-    if( strcmp(sizeStr,"done") == 0 ) return 1;
+    if( strcmp(sizeStr,"done") == 0 ) {
+        if( DEBUG ) printf("Server says done sending files.\n");
+        return 1;
+    }
     // turn the string into unsigned long
     unsigned long filesize = strtoul(sizeStr, NULL, 10);
     if( DEBUG ) printf("file size: %lu\n", filesize);
     if( filesize == 0 ) {
         printf("Warning attempting to retrieve empty or non-existent file from server!");
-        return;
+        return 0;
     }
     // get the file path
     char filenameStr[MAXSIZESIZE];

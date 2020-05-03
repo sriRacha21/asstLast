@@ -125,7 +125,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
             printf("Sending project files...\n");
             sendProjectFiles(getVariableData(variableList, "pName"), new_socket);
-            send(new_socket, "done", sizeof(char) * strlen("done") + 1, 0);
+            send(new_socket, "done;", sizeof(char) * strlen("done;") + 1, 0);
             variableList = freeVariable(variableList, "pName");
             printf("Finished sending project files.\n");
         }
