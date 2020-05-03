@@ -15,6 +15,7 @@ void writeFileAppend( int fd, char *content );
 char* readManifestFromSocket(int sock);
 int rwFileFromSocket(int sock);
 int lineCount(char* path);
+char* buildManifestPath(char* projectName);
 
 void createParentDirectories(char* path){ //takes in a file path and makes the parent directories of the file if tey dont exist alreadykrt
     int i, j;
@@ -112,7 +113,7 @@ char* readManifestFromSocket(int sock) {
     cursorPosition = 0;
     int bytesRead = 0;
     recv(sock, buffer, filesize+1, 0);
-    if( DEBUG ) printf("Manifest contents: %s\n",buffer);
+    if( DEBUG ) printf("Manifest contents: \n```\n%s\n```\n",buffer);
 
     return buffer;
 }
@@ -175,4 +176,12 @@ int lineCount(char* str) {
             newLineCounter += 1;
     free(str);
     return newLineCounter;
+}
+
+char* buildManifestPath(char* projectName) {
+    int manifestPathSize = strlen(projectName) + strlen("/.Manifest") + 1;
+    char* manifestPath = (char*)malloc(sizeof(char) * manifestPathSize);
+    memset(manifestPath,'\0',manifestPathSize);
+    snprintf(manifestPath,manifestPathSize,"%s/.Manifest",projectName);
+    return manifestPath;
 }

@@ -140,6 +140,8 @@ void checkout( int argc, char** argv ) {
     // ask the server if the project exists
     doesProjectExist(sock, argv[2]);
 
+    // fail if the folder already exists on client side
+    if( access("testFolder/", F_OK) >= 0 ) fatalError("Project folder already exists.");
     // tell server we need the manifest, assume send is blocking
     int manifestRequestLength = strlen("manifest:") + strlen(argv[2]) + 1;
     char* manifestRequest = (char*)malloc(manifestRequestLength);
@@ -173,8 +175,8 @@ void checkout( int argc, char** argv ) {
     // read in all files from server and write them out
     int status;
     do {
-        send(sock, projectFileName, 13, 0);
         if( DEBUG ) printf("Sent request to server: \"%s\"\n", projectFileName);
+        send(sock, projectFileName, projectFileNameLength, 0);
         status = rwFileFromSocket(sock);
     } while( status == 0 );
 
@@ -188,7 +190,10 @@ void update( int argc, char** argv ) {
     // ask the server if the project exists
     doesProjectExist(sock, argv[2]);
 
-    if( access(".Manifest", F_OK) < 0 ) fatalError(".Manifest does not exist.");
+    // build path to manifest
+    char* manifestPath = buildManifestPath(argv[2]);
+    // check if manifest exists
+    if( access(manifestPath, F_OK) < 0 ) fatalError(".Manifest does not exist.");
 
     // tell server we need the manifest, assume send is blocking
     int manifestRequestLength = strlen("manifest:") + strlen(argv[2]) + 1;
@@ -201,7 +206,7 @@ void update( int argc, char** argv ) {
     // read a response from the server
     char* serverManifest = readManifestFromSocket(sock);
     // get the local manifest
-    char* clientManifest = readFile(".Manifest");
+    char* clientManifest = readFile(manifestPath);
     // compare the local manifest to the server manifest
     // check that both manifests are non-empty
     if(strlen(serverManifest) == 0) warning("Server manifest is empty!");
@@ -351,6 +356,7 @@ void update( int argc, char** argv ) {
     if( conflicting ) remove(".Update");
 
     // free
+    free(manifestPath);
     free(serverManifestEntries);
     free(clientManifestEntries);
     free(serverManifest);
