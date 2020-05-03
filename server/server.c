@@ -119,9 +119,10 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         //given "project file:<project name>" by client, sends "<filesize>;<filepath>;<file content>" for project, then "done"
         else if(strstr(clientMessage, "project file:") != NULL){
-            printf("Received \"project file:<projectname>\", getting project name then sending all project files.\n");
+            printf("Received \"%s\", getting project name then sending all project files.\n", clientMessage);
             prefixLength = 13;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+            printList(variableList);
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
             printf("Sending project files...\n");
             sendProjectFiles(getVariableData(variableList, "pName"), new_socket);

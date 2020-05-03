@@ -310,14 +310,14 @@ void sendProjectFiles(char* projectName, int socket){ //used in "project file:<p
     if(!currentDir) return; // end of recursion
     while((dirPointer = readdir(currentDir)) != NULL){
         if(strcmp(dirPointer->d_name, ".") != 0 && strcmp(dirPointer->d_name, "..") != 0){
-            if(dirPointer->d_type == 8){
-                char* fileSpecs = concatFileSpecsWithPath(dirPointer->d_name, projectName);
-                send(socket, fileSpecs, sizeof(char) * strlen(fileSpecs)+1, 0);
-                free(fileSpecs);
-            }
             strcpy(path, projectName);
             strcat(path, "/");
             strcat(path, dirPointer->d_name);
+            if(dirPointer->d_type == 8 && dirPointer->d_name[0] != '.'){
+                char* fileSpecs = concatFileSpecsWithPath(path, projectName);
+                send(socket, fileSpecs, sizeof(char) * strlen(fileSpecs)+1, 0);
+                free(fileSpecs);
+            }
             sendProjectFiles(path, socket);
         }
     }
