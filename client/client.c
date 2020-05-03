@@ -731,8 +731,8 @@ void currentVersion( int argc, char** argv ) {
     int tellVersionSize = strlen("current version:") + strlen(argv[2]) + 1;
     char* tellVersion = (char*)malloc(tellVersionSize);
     memset(tellVersion,'\0',tellVersionSize);
-    strcat(tellVersionSize,"current version:");
-    strcat(tellVersionSize,argv[2]);
+    strcat(tellVersion,"current version:");
+    strcat(tellVersion,argv[2]);
     send(sock,tellVersion,tellVersionSize,0);
     // read response from server
     printf("WIP!\n");

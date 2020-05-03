@@ -1,0 +1,10 @@
+* client side testing
+    * configure
+        * Run the server on ilab and connect to it on IP 127.0.0.1
+        * Assume all commands after this still have the server running
+    * checkout
+        * Request a project that doesn't exist on the server.
+        * Request a project that does exist on the server.
+    * update
+        * Request to update a non-existent project 
+        
