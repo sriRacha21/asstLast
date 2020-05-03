@@ -8,12 +8,29 @@
 #include <fcntl.h>
 #include "definitions.h"
 
+void createParentDirectories(char* cfsResults);
 char* readFile(char *filename);
 void writeFile( char *path, char *content );
 void writeFileAppend( int fd, char *content );
 char* readManifestFromSocket(int sock);
 int rwFileFromSocket(int sock);
 int lineCount(char* path);
+
+void createParentDirectories(char* cfsResults){ //takes in a string made from concatFileSpecsWithPath and makes the parent directories of the file if tey dont exist alreadykrt
+    int i, j;
+    char filePath[256] = {0};
+    strcat(filePath, "mkdir -p ");
+    for(i = 0; i < strlen(cfsResults); i++){
+        if(cfsResults[i] == ';') break;
+    }
+    i++;
+    for(j = i; j < strlen(cfsResults); j++){
+        if(cfsResults[j] == ';') break;
+    }
+    strncpy(filePath + strlen(filePath), cfsResults+i, j-i);
+    //printf("%s\n", filePath);
+    system(filePath);
+}
 
 // read a file and return its contents
 char* readFile(char *filename) {
