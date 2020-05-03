@@ -1,4 +1,4 @@
-void createParentDirectories(char* cfsResults);
+void createParentDirectories(char* path)
 char* readFile(char *filename);
 void writeFile( char *path, char *content );
 void writeFileAppend( int fd, char *content );

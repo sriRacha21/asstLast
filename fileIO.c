@@ -16,7 +16,7 @@ char* readManifestFromSocket(int sock);
 int rwFileFromSocket(int sock);
 int lineCount(char* path);
 
-void createParentDirectories(char* cfsResults){ //takes in a string made from concatFileSpecsWithPath and makes the parent directories of the file if tey dont exist alreadykrt
+void createParentDirectories(char* path){ //takes in a file path and makes the parent directories of the file if tey dont exist alreadykrt
     int i, j;
     char filePath[256] = {0};
     strcat(filePath, "mkdir -p ");
