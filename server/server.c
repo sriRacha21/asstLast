@@ -19,8 +19,7 @@
 
 void* clientThread(void* use);
 
-char buffer[1024] = {0};
-char clientMessage[256] = {0};
+char clientMessage[1024] = {0};
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_t threadID[60];
 int threadCounter = 0;
@@ -86,7 +85,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         //given "manifest:<project name>" sends the .manifest of a project as a char*
         else if(strstr(clientMessage, "manifest:") != NULL){
-            printf("Received \"manifest:<projectname>\", getting project name then sending manifest.\n");
+            printf("Received \"%s\", getting project name then sending manifest.\n", clientMessage);
             prefixLength = 9;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
@@ -102,7 +101,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         //given "specific project file:<project name>:<filepath>" sends <filesize>;<file path>;<file content> for that specific file
         else if(strstr(clientMessage, "specific project file:") != NULL){
-            printf("Received \"specific project file:<projectname>:<filepath>\", sending file specs.\n");
+            printf("Received \"%s\", sending file specs.\n", clientMessage);
             prefixLength = 22;
             variableList = insertExit(variableList, createNode("pName", specificFileStringManip(clientMessage, 22, 0), 1));
             variableList = insertExit(variableList, createNode("specFilePath", specificFileStringManip(clientMessage, 22, 1), 1));
@@ -125,14 +124,16 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
             printf("Sending project files...\n");
             sendProjectFiles(getVariableData(variableList, "pName"), new_socket);
+            sleep(5);
             send(new_socket, "done;", sizeof(char) * strlen("done;") + 1, 0);
             variableList = freeVariable(variableList, "pName");
             printf("Finished sending project files.\n");
+            break;
         }
 
         //given "project:<project name>" by client, sends 1 if project exists and 0 if it does not exist
         else if(strstr(clientMessage, "project:") != NULL){
-            printf("Received \"project:<projectname>\", getting project name then sending whether or not it exists.\n");
+            printf("Received \"%s\", getting project name then sending whether or not it exists.\n", clientMessage);
             prefixLength = 8;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
@@ -148,7 +149,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         //given "destroy:<project name>" by client, destroys project's files and subdirectories and sends "done" when finished
         else if(strstr(clientMessage, "destroy:") != NULL){
-            printf("Received \"destroy:<project name>\", removing and files and subdirectories of project.\n");
+            printf("Received \"%s\", removing and files and subdirectories of project.\n", clientMessage);
             prefixLength = 8;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s.  Destroying...\n", getVariableData(variableList, "pName"));
@@ -164,7 +165,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         //given "current version:<project name> by client, retreives and sends project's current version from the active .Manifest"
         else if(strstr(clientMessage, "current version:") != NULL){
-            printf("Received \"current version:<project name>\", fetching and sending current version of the project as listed in the .Manifest.\n");
+            printf("Received \"%s\", fetching and sending current version of the project as listed in the .Manifest.\n", clientMessage);
             prefixLength = 16;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s.  Getting version number...\n", getVariableData(variableList, "pName"));
@@ -178,7 +179,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         //given "create:<project name>" by client, retrieves project name, creates the folder, and then initializes a .Manifest that holds "0\n" and sends "done" after
         else if(strstr(clientMessage, "create:") != NULL){
-            printf("Received \"create:<project name>\", fetching project name and creating directory and initializing .Manifest file.\n");
+            printf("Received \"%s\", fetching project name and creating directory and initializing .Manifest file.\n", clientMessage);
             prefixLength = 7;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s.  Creating...\n", getVariableData(variableList, "pName"));
@@ -190,7 +191,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         //given "history:<project name>" by client, retrives and sends the .History file belonging to the project
         else if(strstr(clientMessage, "history:") != NULL){
-            printf("Received \"history:<project name>\", fetching then sending .History file for the project.\n");
+            printf("Received \"%s\", fetching then sending .History file for the project.\n", clientMessage);
             prefixLength = 8;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s.  Getting history...\n", getVariableData(variableList, "pName"));
@@ -201,6 +202,12 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("History has been sent.\n");
             variableList = freeVariable(variableList, "pName");
             variableList = freeVariable(variableList, "historyContents");
+        }
+
+        //given "rollback:<project name>" sends all the files in the version of that project.
+        else if(strstr(clientMessage, "rollback:") != NULL){
+            printf("Received \"%s\", fetching then sending files for the requested version of the project.\n", clientMessage);
+            int prefixLength = 9;
         }
     }
     

@@ -316,6 +316,7 @@ void sendProjectFiles(char* projectName, int socket){ //used in "project file:<p
             if(dirPointer->d_type == 8 && dirPointer->d_name[0] != '.'){
                 char* fileSpecs = concatFileSpecsWithPath(path, projectName);
                 send(socket, fileSpecs, sizeof(char) * strlen(fileSpecs)+1, 0);
+                //printf("%s\n", fileSpecs);
                 free(fileSpecs);
             }
             sendProjectFiles(path, socket);
