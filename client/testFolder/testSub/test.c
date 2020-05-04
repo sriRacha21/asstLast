@@ -1,84 +1,4 @@
-Attempting to read file .configure
-Attempting to connect to IP: 127.0.0.1:6970
-Successfully connected to server!
-Sent request to server: "project:testFolder"
-Received from server: "exists"
-Project found on filesystem!
-Sent request to server: "manifest:testFolder"
-file size: 244
-Manifest contents: 
-```
-0
-0 testFolder/melt.txt 26c3542c30f2689b17ec8ff5b91a5fb9
-0 testFolder/testProgram.c 84a95b98fe0128375827e86f0e11be8c
-0 testFolder/testSub/asunoyo.txt 1fe838790b38836a2ddfdaac8ba8ce0f
-0 testFolder/testSub/test.c e80f5d262474fd3974f03bea8b18feb
-```
-Writing to file: testFolder/.Manifest
-Sent request to server: "project file:testFolder"
-Started file checkout.
-file size: 993
-file name: testFolder/melt.txt
-Received from server: "asa me ga samete massaki ni omoiukabu kimi no koto.
-omoikitte maegami wo kitta "doushita no?" tte kikaretakute.
-pinku no sukaato ohana no kamikazari sashite dekakeru no kyou no watashi wa kawaii no yo!
-
-meruto tokete shimaisou
-suki da nante zettai ni ienai...
-dakedo meruto
-koi ni koi nante shinai wa watashi
-datte kimi no koto ga... suki nano
-
-	tenki yohou ga uso wo tsuita doshaburi no ame ga furu
-kaban ni ireta mama no oritatamigasa ureshikunai
-tameiki wo tsuita
-sonna toki
-
-"shou ga nai kara haitteyaru" nante
-tonari ni iru kimi ga warau
-koi ni ochiru oto ga shita
-
- 	meruto iki ga tsumarisou
- 	kimi ni fureteru migite ga furueru
-	takanaru mune
- 	hanbunko no kasa
-te wo nobaseba todoku kyori
-doushiyou?!
-omoi yo todoke kimi ni
- 	onegai jikan wo tomete nakisou nano
-	demo ureshikute shinde shimau wa!
-meruto eki ni tsuite shimau...
-mou aenai chikakute tooi yo
-	dakara meruto
-	te wo tsunaide arukitai!
- 	mou baibai shinakucha ikenai no?
- 	ima sugu watashi wo dakishimete!
-     ...nante ne "
-Writing to file: testFolder/melt.txt
-Sent request to server: "project file:testFolder"
-Started file checkout.
-file size: 115
-file name: testFolder/testProgram.c
-Received from server: "#include<stdio.h>
-#include<stdlib.h>
-
-int main(int argc, char** argv){
-    printf("a more appropriate message");
-}"
-Writing to file: testFolder/testProgram.c
-Sent request to server: "project file:testFolder"
-Started file checkout.
-file size: 75
-file name: testFolder/testSub/asunoyo.txt
-Received from server: "kibun shidai desu boku wa
-sonna boku o oite 
-are kara sekai wa kawattatte "
-Writing to file: testFolder/testSub/asunoyo.txt
-Sent request to server: "project file:testFolder"
-Started file checkout.
-file size: 20600
-file name: testFolder/testSub/test.c
-Received from server: "#include<stdio.h>
+#include<stdio.h>
 #include<stdlib.h>
 #include<math.h>
 #include<string.h>
@@ -657,9 +577,4 @@ void free_list(node* location){
     free(temp2->bits);
     free(temp2);
   }
-}"
-Writing to file: testFolder/testSub/test.c
-Sent request to server: "project file:testFolder"
-Started file checkout.
-Server says done sending files.
-Sent request to server: "finished"
+}

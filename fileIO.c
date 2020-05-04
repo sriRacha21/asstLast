@@ -8,6 +8,9 @@
 #include <fcntl.h>
 #include "definitions.h"
 
+// definitions
+#define ARUR S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH // (all read user write)
+
 void createParentDirectories(char* path);
 char* readFile(char *filename);
 void writeFile( char *path, char *content );
@@ -207,7 +210,6 @@ int lineCount(char* str) {
     for( i = 0; i < strlen(str); i++ )
         if( str[i] == '\n' )
             newLineCounter += 1;
-    free(str);
     return newLineCounter;
 }
 

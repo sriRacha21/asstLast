@@ -97,25 +97,25 @@ void fillManifest(char* ogPath, char* writeTo, int version){
 
 char* convertHash(char* filePath){
     char* fileContents = readFile(filePath);
-    char hashBuffer[17];
+    unsigned char hashBuffer[17];
     memset(hashBuffer, '\0', 17);
     md5hash(fileContents, hashBuffer);
     free(fileContents);
-    char* hashTransposed = malloc(sizeof(char) * 34);
-    memset(hashTransposed, '\0', 34);
+    char* hashTransposed = malloc(sizeof(char) * 33);
+    memset(hashTransposed, '\0', 33);
     int i;
-    for(i = 0; i < strlen(hashBuffer); i++){
-        sprintf(&hashTransposed[i], "%02x", hashBuffer[i]);
+    for(i = 0; i < 16; i++){
+        sprintf(&hashTransposed[i*2], "%02x", hashBuffer[i]);
     }
     return hashTransposed;
 }
 
 char* convertHashGivenHash(char* hash) {
-    char* hashTransposed = malloc(sizeof(char) * 34);
-    memset(hashTransposed, '\0', 34);
+    char* hashTransposed = malloc(sizeof(char) * 33);
+    memset(hashTransposed, '\0', 33);
     int i;
-    for(i = 0; i < strlen(hash); i++){
-        sprintf(&hashTransposed[i], "%02x", hash[i]);
+    for(i = 0; i < 16; i++){
+        sprintf(&hashTransposed[i*2], "%02x", hash[i]);
     }
     return hashTransposed;
 }
