@@ -25,6 +25,7 @@
 #define FALSE 0
 #define TRUE 1
 #define PORT 6969
+#define ARUR S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH // (all read user write)
 
 // prototypes
 void warning(char* message);
@@ -168,6 +169,7 @@ void checkout( int argc, char** argv ) {
     char* manifestLocation = (char*)malloc(manifestLocationLength);
     sprintf(manifestLocation,"%s/.Manifest",argv[2]);
     writeFile(manifestLocation, manifest);
+    chmod(manifestLocation, ARUR);
     free(manifestLocation);
     
     // build a string that will be used to request all the files in the project from the server
@@ -228,6 +230,12 @@ void update( int argc, char** argv ) {
     sprintf(updatePath,"%s/.Update",argv[2]);
     // remove .Update if it already exists
     remove(updatePath);
+    // remove .Conflict if it already exists
+    int conflictPathLength = strlen(argv[2]) + strlen("/.Conflict") + 1;
+    char* conflictPath = (char*)malloc(conflictPathLength);
+    memset(conflictPath,'\0',conflictPathLength);
+    sprintf(conflictPath,"%s/.Conflict",argv[2]);
+    remove(conflictPath);
     // open the file for .Update
     int fdUpdate = open(updatePath, O_APPEND | O_CREAT | O_RDWR);
     // check for full success (same .Manifest versions)
@@ -265,18 +273,19 @@ void update( int argc, char** argv ) {
     // make a copy of the string for strtok to use
     serverManifestCopy = (char*)malloc(strlen(serverManifest)+1);
     strcpy(serverManifestCopy,serverManifest);
-    printf("Tokenizing %s\n",serverManifestCopy);
     char* serverManifestEntry = strtok_r(serverManifestCopy, "\n", &savePtrServerManifest); // 32 bytes for hash, 1 byte for the file version, 2 bytes for spaces, and 100 bytes for file path
-    printf("First server manifest entry: %s\n",serverManifestEntry);
+    serverManifestEntry = strtok_r(NULL,"\n",&savePtrServerManifest);
     // loop over the entries in the manifest
     int i = 0;
     while( serverManifestEntry != NULL ) {
-        serverManifestEntry = strtok_r(NULL,"\n",&savePtrServerManifest);
         // tokenize the entry into version, path, hash
         char* savePtrServerManifestEntry;
         serverManifestEntries[i].version = atoi(strtok_r(serverManifestEntry," ",&savePtrServerManifestEntry));
         serverManifestEntries[i].path = strtok_r(NULL," ",&savePtrServerManifestEntry);
         serverManifestEntries[i].hash = strtok_r(NULL," ",&savePtrServerManifestEntry);
+        if( DEBUG ) printf("Server manifest entry %d:\n\tversion: %d\n\tpath: %s\n\thash: %s\n",i,serverManifestEntries[i].version,serverManifestEntries[i].path,serverManifestEntries[i].hash);
+        // move to the next string
+        serverManifestEntry = strtok_r(NULL,"\n",&savePtrServerManifest);
         // increment the counter
         i++;
     }
@@ -289,16 +298,21 @@ void update( int argc, char** argv ) {
     // save pointers since we are using strtok for processing two strings at a time
     char* savePtrClientManifest;
     // throw away the first value because we don't need project version
-    char* clientManifestEntry = strtok_r(clientManifest, "\n", &savePtrClientManifest); // 32 bytes for hash, 1 byte for the file version, 2 bytes for spaces, and 100 bytes for file path
+    clientManifestCopy = (char*)malloc(strlen(clientManifest)+1);
+    strcpy(clientManifestCopy,clientManifest);
+    char* clientManifestEntry = strtok_r(clientManifestCopy, "\n", &savePtrClientManifest); // 32 bytes for hash, 1 byte for the file version, 2 bytes for spaces, and 100 bytes for file path
+    clientManifestEntry = strtok_r(NULL,"\n",&savePtrClientManifest);
     // loop over the entries in the manifest
     i = 0;
     while( clientManifestEntry != NULL ) {
-        clientManifestEntry = strtok_r(NULL,"\n",&savePtrClientManifest);
         // tokenize the entry into version, path, hash
         char* savePtrClientManifestEntry;
         clientManifestEntries[i].version = atoi(strtok_r(clientManifestEntry," ",&savePtrClientManifestEntry));
         clientManifestEntries[i].path = strtok_r(NULL," ",&savePtrClientManifestEntry);
         clientManifestEntries[i].hash = strtok_r(NULL," ",&savePtrClientManifestEntry);
+        printf("Client manifest entry %d:\n\tversion: %d\n\tpath: %s\n\thash: %s\n",i,clientManifestEntries[i].version,clientManifestEntries[i].path,clientManifestEntries[i].hash);
+        // move to the next string
+        clientManifestEntry = strtok_r(NULL,"\n",&savePtrClientManifest);
         // increment the counter
         i++;
     }
@@ -307,8 +321,8 @@ void update( int argc, char** argv ) {
     /*  Check for differences between local and client manifests    */
     int conflicting = FALSE;
     int fdConflict = -1;
-    i = 0;
-    while( i < numClientManifestEntries || i < numServerManifestEntries ) {
+    for( i = 0; i < numClientManifestEntries || i < numServerManifestEntries; i++ ) {
+        if( DEBUG ) printf("Comparing client and server entries for index %d\n",i);
         // if the client has more entries (server has removed files)
         if( i >= numClientManifestEntries ) {
             int serverVersion = serverManifestEntries[i].version;
@@ -352,14 +366,13 @@ void update( int argc, char** argv ) {
 
             // if a difference is found, and the user did not change the file add a line to .Update (writeFileAppend) and output information to stdout
             // check if there is a difference between the local and server hash
+            if( DEBUG ) printf("Comparing for file %s\nserver hash:\t%s\nclient hash:\t%s\n",clientPath,serverHash,clientHash);
             if( strcmp(serverHash,clientHash) == 0 ) continue;
             // check if user changed the file
-            char* fileContents = readFile(clientPath);
-            char liveHash[16];
-            md5hash(fileContents,liveHash);
-            char* liveHexHash = convertHashGivenHash(liveHash);
+            char* liveHexHash = convertHash(clientPath);
             // if the user did not change the file write out to .Update
-            if( strcmp(liveHash,clientHash) == 0 ) {
+            if( DEBUG ) printf("Comparing for file %s\nlive hash:\t%s\nclient hash:\t%s\n",clientPath,liveHexHash,clientHash);
+            if( strcmp(liveHexHash,clientHash) == 0 ) {
                 char* toWrite = (char*)malloc(strlen(serverPath)+strlen(serverHexHash)+5);
                 sprintf(toWrite, "M %s %s\n", serverPath, serverHexHash);
                 printf("M %s\n", clientPath);
@@ -368,25 +381,33 @@ void update( int argc, char** argv ) {
             // if the user did change the file write out to conflict and turn on the conflicting flag
             } else {
                 conflicting = TRUE;
-                fdConflict = open(".Conflict", O_APPEND | O_CREAT | O_RDWR);
+                // open the file for writing
+                fdConflict = open(conflictPath, O_APPEND | O_CREAT | O_RDWR);
+                chmod(conflictPath,ARUR);
 
                 char* toWrite = (char*)malloc(strlen(serverPath)+strlen(liveHexHash)+5);
                 sprintf(toWrite, "C %s %s\n", serverPath, liveHexHash);
                 printf("C %s\n", clientPath);
-                writeFileAppend(fdUpdate, toWrite);
+                writeFileAppend(fdConflict, toWrite);
                 free(toWrite);
+                
             }
             // free
-            free(fileContents);
             free(serverHexHash);
             free(clientHexHash);
             free(liveHexHash);
         }
     }
+
+    // chmod to make all files accessible
+    chmod(updatePath,ARUR);
+
     // delete .Update if there is a conflict
-    if( conflicting ) remove(".Update");
+    if( conflicting ) remove(updatePath);
 
     // free
+    free(updatePath);
+    free(conflictPath);
     free(manifestPath);
     free(serverManifestEntries);
     free(clientManifestEntries);
