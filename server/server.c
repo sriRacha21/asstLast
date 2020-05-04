@@ -92,8 +92,17 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             strcat(copyPath, "-");
             strcat(copyPath, version);
             strcat(copyPath, ".tar.gz backups/");
-            strcat(copyPath, getVariableData(variableList, "pName")); //should end up as 'tar -czvf <projectname>-<versnum>.tar.gz in backups
+            strcat(copyPath, getVariableData(variableList, "pName")); //should end up as 'tar -czvf <projectname>-<versnum>.tar.gz in current directory
             system(copyPath); //tar -czvf <project>-<varsnum>.tar.gz backups/<project>
+
+            //move to backups
+            copyPath[0] = '\0';
+            strcat(copyPath, "mv ");
+            strcat(copyPath, getVariableData(variableList, "pName"));
+            strcat(copyPath, "-");
+            strcat(copyPath, version);
+            strcat(copyPath,".tar.gz backups");
+            system(copyPath);
 
             //remove the copied non compressed file in backups
             copyPath[0] = '\0';
