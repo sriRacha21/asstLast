@@ -122,7 +122,6 @@ char* readManifestFromSocket(int sock) {
 }
 
 int rwFileFromSocket(int sock) {
-    if( DEBUG ) printf("Started file checkout.\n");
     // get the size of the file
     char sizeStr[MAXSIZESIZE];
     int cursorPosition = 0;
@@ -158,13 +157,8 @@ int rwFileFromSocket(int sock) {
     // read in the rest of the message
     char* buffer = (char*)malloc(filesize + 1);
     memset(buffer, '\0', filesize+1);
-    cursorPosition = 0;
-    int bytesRead = 0;
-    do {
-        bytesRead = read(sock, &buffer[cursorPosition], filesize);
-        // if( DEBUG ) printf("Received from server: \"%s\"\n",buffer);
-        cursorPosition += bytesRead;
-    } while( bytesRead > 0 && cursorPosition < filesize);
+    recv(sock, buffer, filesize, 0);
+    // if( DEBUG ) printf("Received from server: \"%s\"\n",buffer);
     // make the folder if it doesn't exist
     int folderCreateCmdLength = strlen("mkdir -p ") + strlen(filenameStr) + 1;
     char* folderCreateCmd = (char*)malloc(folderCreateCmdLength);

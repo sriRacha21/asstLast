@@ -310,7 +310,7 @@ void update( int argc, char** argv ) {
         clientManifestEntries[i].version = atoi(strtok_r(clientManifestEntry," ",&savePtrClientManifestEntry));
         clientManifestEntries[i].path = strtok_r(NULL," ",&savePtrClientManifestEntry);
         clientManifestEntries[i].hash = strtok_r(NULL," ",&savePtrClientManifestEntry);
-        printf("Client manifest entry %d:\n\tversion: %d\n\tpath: %s\n\thash: %s\n",i,clientManifestEntries[i].version,clientManifestEntries[i].path,clientManifestEntries[i].hash);
+        if( DEBUG ) printf("Client manifest entry %d:\n\tversion: %d\n\tpath: %s\n\thash: %s\n",i,clientManifestEntries[i].version,clientManifestEntries[i].path,clientManifestEntries[i].hash);
         // move to the next string
         clientManifestEntry = strtok_r(NULL,"\n",&savePtrClientManifest);
         // increment the counter
@@ -355,14 +355,10 @@ void update( int argc, char** argv ) {
             int clientVersion = clientManifestEntries[i].version;
             char* clientPath = clientManifestEntries[i].path;
             char* clientHash = clientManifestEntries[i].hash;
-            // write hash to hex
-            char* clientHexHash = convertHashGivenHash(clientHash);
 
             int serverVersion = serverManifestEntries[i].version;
             char* serverPath = serverManifestEntries[i].path;
             char* serverHash = serverManifestEntries[i].hash;
-            // write hash to hex
-            char* serverHexHash = convertHashGivenHash(serverHash);
 
             // if a difference is found, and the user did not change the file add a line to .Update (writeFileAppend) and output information to stdout
             // check if there is a difference between the local and server hash
@@ -373,8 +369,8 @@ void update( int argc, char** argv ) {
             // if the user did not change the file write out to .Update
             if( DEBUG ) printf("Comparing for file %s\nlive hash:\t%s\nclient hash:\t%s\n",clientPath,liveHexHash,clientHash);
             if( strcmp(liveHexHash,clientHash) == 0 ) {
-                char* toWrite = (char*)malloc(strlen(serverPath)+strlen(serverHexHash)+5);
-                sprintf(toWrite, "M %s %s\n", serverPath, serverHexHash);
+                char* toWrite = (char*)malloc(strlen(serverPath)+strlen(serverHash)+5);
+                sprintf(toWrite, "M %s %s\n", serverPath, serverHash);
                 printf("M %s\n", clientPath);
                 writeFileAppend(fdUpdate, toWrite);
                 free(toWrite);
@@ -393,8 +389,6 @@ void update( int argc, char** argv ) {
                 
             }
             // free
-            free(serverHexHash);
-            free(clientHexHash);
             free(liveHexHash);
         }
     }
@@ -422,22 +416,41 @@ void upgrade( int argc, char** argv ) {
     // check if the project exists on the server
     doesProjectExist(sock, argv[2]);
 
+    // build path to conflict
+    int updatePathLength = strlen(argv[2]) + strlen("/.Update") + 1;
+    char* updatePath = (char*)malloc(updatePathLength);
+    memset(updatePath,'\0',updatePathLength);
+    sprintf(updatePath,"%s/.Update",argv[2]);
+    // build path to conflict
+    int conflictPathLength = strlen(argv[2]) + strlen("/.Conflict") + 1;
+    char* conflictPath = (char*)malloc(conflictPathLength);
+    memset(conflictPath,'\0',conflictPathLength);
+    sprintf(conflictPath,"%s/.Conflict",argv[2]);
+    // build path to manifest
+    int manifestPathLength = strlen(argv[2]) + strlen("/.Manifest") + 1;
+    char* manifestPath = (char*)malloc(manifestPathLength);
+    memset(manifestPath,'\0',manifestPathLength);
+    snprintf(manifestPath,manifestPathLength,"%s/.Manifest",argv[2]);
     // check if .Update exists, exit if it does not
-    if( access( ".Update", F_OK ) < 0 ) fatalError(".Update does not exist. Do an update.");
+    if( access( updatePath, F_OK ) < 0 ) fatalError(".Update does not exist. Do an update.");
     // check if .Conflict exists, exit if it does
-    if( access( ".Conflict", F_OK ) >= 0 ) fatalError("A conflict exists in your project. Resolve the conflicts and update.");
+    if( access( conflictPath, F_OK ) >= 0 ) fatalError("A conflict exists in your project. Resolve the conflicts and update.");
     
     // check if .Update is empty, delete the file, and tell user project is up-to-date
-    char* updateContents = readFile(".Update");
+    char* updateContents = readFile(updatePath);
     if( strlen(updateContents) == 0 ) {
-        remove(".Update");
+        remove(updatePath);
         printf("Your project is up-to-date.\n");
         return;
     }
     // parse .Update file for entries
     char* savePtrUpdate;
-    char* updateEntry = strtok_r(updateContents,"\n",&savePtrUpdate);
+    // copy string for strtok
+    char* updateContentsCopy = (char*)malloc(strlen(updateContents)+1);
+    strcpy(updateContentsCopy,updateContents);
+    char* updateEntry = strtok_r(updateContentsCopy,"\n",&savePtrUpdate);
     while( updateEntry != NULL ) {
+        printf("Update entry: %s\n",updateEntry);
         // start the pointer
         char* savePtrUpdateEntry;
         // parse the entry for tag, file location, hash
@@ -447,32 +460,13 @@ void upgrade( int argc, char** argv ) {
         // decide what to do based on tag
         // check if tag exists
         if( strlen(tag) < 1 ) continue;
-        // on D, remove entry from manifest
-        if( tag[0] == 'D' ) {
-            // make sure the manifest exists
-            if( access( ".Conflict", F_OK ) >= 0 ) fatalError("A deletion entry exists in your .Update and there is no .Manifest");
-            // open the new manifest file
-            int newManifestFd = open( ".Manifest.tmp", O_CREAT | O_APPEND | O_RDWR );
-            // read old manifest
-            char* oldManifestContents = readFile(".Manifest");
-            // save pointer to tokenize
-            char* savePtrManifest;
-            char* oldManifestEntry = strtok_r(oldManifestContents,"\n",&savePtrManifest);
-            writeFileAppend(newManifestFd, oldManifestEntry);
-            while( oldManifestEntry != NULL ) {
-                // move token
-                oldManifestEntry = strtok_r(NULL,"\n",&savePtrManifest);
-                // save ptr for entry elements
-                char* savePtrManifestEntry;
-                // save parts of entry
-                int manifestVersion = atoi(strtok_r(oldManifestEntry," ",&savePtrManifestEntry));
-                char* manifestFilepath = strtok_r(NULL," ",&savePtrManifestEntry);
-                char* manifestHash = strtok_r(NULL," ",&savePtrManifestEntry);
-                // if file paths don't match write the entry
-                if( strcmp(manifestFilepath,filepath) != 0 )
-                    writeFileAppend(newManifestFd, oldManifestEntry);
-            }
-        } else if( tag[0] == 'M' || tag[0] == 'A' ) {
+        // on D delete the entry from the manifest
+        // if( tag[0] == 'D' ) {
+        //     removeEntryFromManifest();
+        // }
+        // on M or A write the file out
+        // else 
+        if( tag[0] == 'M' || tag[0] == 'A' ) {
             if( tag[0] == 'M' ) remove(filepath);
             // build request to server
             int projectFileNameLength = strlen("specific project file:") + strlen(argv[2]) + strlen(":") + strlen(filepath) + 1;
@@ -490,10 +484,28 @@ void upgrade( int argc, char** argv ) {
         // update tokenizer
         updateEntry = strtok_r(NULL,"\n",&savePtrUpdate);
     }
+    // replace the old manifest with the server manifest
+    remove(manifestPath);
+    // tell server we need the manifest, assume send is blocking
+    int manifestRequestLength = strlen("manifest:") + strlen(argv[2]) + 1;
+    char* manifestRequest = (char*)malloc(manifestRequestLength);
+    memset(manifestRequest,'\0',manifestRequestLength);
+    strcat(manifestRequest,"manifest:");
+    strcat(manifestRequest,argv[2]);
+    // send a request to the server for the manifest
+    send(sock, manifestRequest, manifestRequestLength, 0);
+    char* serverManifest = readManifestFromSocket(sock);
+    writeFile(manifestPath,serverManifest);
     // delete the update file
-    remove(".Update");
+    remove(updatePath);
+    // close file
+    // close(newManifestFd);
     // free
     free(updateContents);
+    free(updateContentsCopy);
+    free(updatePath);
+    free(conflictPath);
+    free(manifestPath);
 }
 
 void commit( int argc, char** argv ) {
@@ -509,43 +521,75 @@ void commit( int argc, char** argv ) {
     strcat(manifestRequest,"manifest:");
     strcat(manifestRequest,argv[2]);
     // send a request to the server for the manifest
-    send(sock, manifestRequest, 9, 0);
+    send(sock, manifestRequest, manifestRequestLength, 0);
     // fail if the client cannot fetch server manifest
     char* serverManifest = readManifestFromSocket(sock);
     if( strlen(serverManifest) == 0 ) fatalError("The server's .Manifest could not be fetched.");
     // fail if the client has a non-empty .Update file
+    // build the path to conflict
+    int conflictPathLength = strlen(argv[2]) + strlen("/.Conflict") + 1;
+    char* conflictPath = (char*)malloc(conflictPathLength);
+    memset(conflictPath,'\0',conflictPathLength);
+    sprintf(conflictPath,"%s/.Conflict",argv[2]);
+    // build the path to manifest
+    int manifestPathLength = strlen(argv[2]) + strlen("/.Manifest") + 1;
+    char* manifestPath = (char*)malloc(manifestPathLength);
+    memset(manifestPath,'\0',manifestPathLength);
+    snprintf(manifestPath,manifestPathLength,"%s/.Manifest",argv[2]);
+    // build the path to Commit
+    int commitPathLength = strlen(argv[2]) + strlen("/.Commit") + 1;
+    char* commitPath = (char*)malloc(commitPathLength);
+    memset(commitPath,'\0',commitPathLength);
+    snprintf(commitPath,commitPathLength,"%s/.Commit",argv[2]);
+    // build the path to update
+    int updatePathLength = strlen(argv[2]) + strlen("/.Update") + 1;
+    char* updatePath = (char*)malloc(updatePathLength);
+    memset(updatePath,'\0',updatePathLength);
+    sprintf(updatePath,"%s/.Update",argv[2]);
     // fail if the file exists and is non-empty
-    if( access(".Update", F_OK) == 0 ) {
-        char* updateContents = readFile(".Update");
+    if( access(updatePath, F_OK) == 0 ) {
+        char* updateContents = readFile(updatePath);
         if( strlen(updateContents) > 0 )
             fatalError(".Update exists.");
         free(updateContents);
     }
-    if( access(".Conflict", F_OK) == 0 ) fatalError(".Conflict exists ");
+    if( access(conflictPath, F_OK) == 0 ) fatalError(".Conflict exists ");
     // fail if manifest versions don't match
-    if( access(".Manifest", F_OK) < 0 ) fatalError("Local .Manifest does not exist.");
-    char* clientManifest = readFile(".Manifest");
-    int clientManifestVersion = atoi(strtok(clientManifest,"\n"));
-    int serverManifestVersion = atoi(strtok(serverManifest,"\n"));
-    if( clientManifestVersion != serverManifestVersion ) fatalError("Please update your local project to commit.");
+    if( access(manifestPath, F_OK) < 0 ) fatalError("Local .Manifest does not exist.");
+    char* clientManifest = readFile(manifestPath);
+    // copy client and server manifests for usage by strtok
+    char* clientManifestCopy = (char*)malloc(strlen(clientManifest)+1);
+    char* serverManifestCopy = (char*)malloc(strlen(serverManifest)+1);
+    strcpy(clientManifestCopy,clientManifest);
+    strcpy(serverManifestCopy,serverManifest);
+    // use strtok to tokenize client and server manifest
+    char* clientManifestVersion = strtok(clientManifestCopy,"\n");
+    char* serverManifestVersion = strtok(serverManifestCopy,"\n");
+    if( strcmp(clientManifestVersion,serverManifestVersion) != 0 ) fatalError("Please update your local project to commit.");
     // open the .Commit file
-    int commitFd = open( ".Commit", O_CREAT | O_RDWR | O_APPEND );
+    remove(commitPath);
+    int commitFd = open( commitPath, O_CREAT | O_RDWR | O_APPEND );
     /*  tokenize the server manifest    */
     // allocate space for entries in the server manifest, one struct per entry in the server manifest
     manifestEntry* serverManifestEntries = (manifestEntry*)malloc(sizeof(manifestEntry)*lineCount(serverManifest));
     // save pointers since we are using strtok for processing two strings at a time
     char* savePtrServerManifest;
     // throw away the first value because we don't need project version
-    char* serverManifestEntry = strtok_r(serverManifest, "\n", &savePtrServerManifest); // 32 bytes for hash, 1 byte for the file version, 2 bytes for spaces, and 100 bytes for file path
+    // use copy of server manifest for tokenizing string
+    serverManifestCopy = (char*)malloc(strlen(serverManifest)+1);
+    strcpy(serverManifestCopy,serverManifest);
+    char* serverManifestEntry = strtok_r(serverManifestCopy, "\n", &savePtrServerManifest); // 32 bytes for hash, 1 byte for the file version, 2 bytes for spaces, and 100 bytes for file path
+    serverManifestEntry = strtok_r(NULL,"\n",&savePtrServerManifest);
     // loop over the entries in the manifest
     int i = 0;
     while( serverManifestEntry != NULL ) {
-        serverManifestEntry = strtok_r(NULL,"\n",&savePtrServerManifest);
         // tokenize the entry into version, path, hash
         char* savePtrServerManifestEntry;
         serverManifestEntries[i].version = atoi(strtok_r(serverManifestEntry," ",&savePtrServerManifestEntry));
         serverManifestEntries[i].path = strtok_r(NULL," ",&savePtrServerManifestEntry);
         serverManifestEntries[i].hash = strtok_r(NULL," ",&savePtrServerManifestEntry);
+        // move the string for tokenizer
+        serverManifestEntry = strtok_r(NULL,"\n",&savePtrServerManifest);
         // increment the counter
         i++;
     }
@@ -557,33 +601,34 @@ void commit( int argc, char** argv ) {
     // save pointers since we are using strtok for processing two strings at a time
     char* savePtrClientManifest;
     // throw away the first value because we don't need project version
-    char* clientManifestEntry = strtok_r(clientManifest, "\n", &savePtrClientManifest); // 32 bytes for hash, 1 byte for the file version, 2 bytes for spaces, and 100 bytes for file path
+    // use copy of client manifest for tokenizing string
+    clientManifestCopy = (char*)malloc(strlen(clientManifest)+1);
+    strcpy(clientManifestCopy,clientManifest);
+    char* clientManifestEntry = strtok_r(clientManifestCopy, "\n", &savePtrClientManifest); // 32 bytes for hash, 1 byte for the file version, 2 bytes for spaces, and 100 bytes for file path
+    clientManifestEntry = strtok_r(NULL,"\n",&savePtrClientManifest);
     // loop over the entries in the manifest
     i = 0;
     while( clientManifestEntry != NULL ) {
-        clientManifestEntry = strtok_r(NULL,"\n",&savePtrClientManifest);
         // tokenize the entry into version, path, hash
         char* savePtrClientManifestEntry;
         clientManifestEntries[i].version = atoi(strtok_r(clientManifestEntry," ",&savePtrClientManifestEntry));
         clientManifestEntries[i].path = strtok_r(NULL," ",&savePtrClientManifestEntry);
         clientManifestEntries[i].hash = strtok_r(NULL," ",&savePtrClientManifestEntry);
+        // move the string for the tokenizer
+        clientManifestEntry = strtok_r(NULL,"\n",&savePtrClientManifest);
         // increment the counter
         i++;
     }
     int numClientManifestEntries = i;
     // process manifest entries in parallel
     int failure = FALSE;
-    i = 0;
-    while( i < numClientManifestEntries || i < numServerManifestEntries ) {
+    for( i = 0; i < numClientManifestEntries || i < numServerManifestEntries; i++ ) {
         manifestEntry clientManifestEntry = clientManifestEntries[i];
         manifestEntry serverManifestEntry = serverManifestEntries[i];
         // calculate live hash of file
-        char liveHash[17];
-        char* filecontents = readFile(clientManifestEntry.path);
-        md5hash(filecontents, liveHash);
-        char* clientHexHash = convertHashGivenHash(clientManifestEntry.hash);
-        char* liveHexHash = convertHashGivenHash(liveHash);
-        free(filecontents);
+        char* clientHexHash = clientManifestEntry.hash;
+        char* liveHexHash = convertHash(clientManifestEntry.path);
+        printf("Comparing live hash %s and client hash %s\n",liveHexHash,clientManifestEntry.hash);
         // server has files that the client does not
         if( i >= numServerManifestEntries ) {
             // write out delete code
@@ -603,7 +648,7 @@ void commit( int argc, char** argv ) {
         // compare hashes and write out M if 
         // 1. the server and client have the same hash AND
         // 2. the live hash of the file is different from client hash
-        } else if( strcmp(clientManifestEntry.hash,serverManifestEntry.hash) == 0 && strcmp(liveHash,clientManifestEntry.hash) != 0 ) {
+        } else if( strcmp(clientManifestEntry.hash,serverManifestEntry.hash) == 0 && strcmp(liveHexHash,clientManifestEntry.hash) != 0 ) {
             // write out modify code
             char* toWrite = (char*)malloc(1 + 1 + 4 + 1 + strlen(clientManifestEntry.path) + 1 + strlen(clientHexHash) + 1);
             sprintf(toWrite, "M %d %s %s\n",clientManifestEntry.version+1,clientManifestEntry.path,clientHexHash);
@@ -620,19 +665,29 @@ void commit( int argc, char** argv ) {
             free(liveHexHash);
             break;
         }
-        free(clientHexHash);
         free(liveHexHash);
     }
     if( failure ) {
         printf("Commit failed.\n");
-        remove(".Commit");
+        remove(commitPath);
     }
+    
+    // chmod
+    chmod(commitPath, ARUR);
 
+    // close
+    close(commitFd);
     // free
     free(serverManifest);
     free(clientManifest);
     free(serverManifestEntries);
     free(clientManifestEntries);
+    free(clientManifestCopy);
+    free(serverManifestCopy);
+    free(manifestPath);
+    free(commitPath);
+    free(updatePath);
+    free(conflictPath);
 }
 
 void push( int argc, char** argv ) {
@@ -641,8 +696,13 @@ void push( int argc, char** argv ) {
     // check if the project exists on the server
     doesProjectExist(sock, argv[2]);
 
+    // build the path to Commit
+    int commitPathLength = strlen(argv[2]) + strlen("/.Commit") + 1;
+    char* commitPath = (char*)malloc(commitPathLength);
+    memset(commitPath,'\0',commitPathLength);
+    snprintf(commitPath,commitPathLength,"%s/.Commit",argv[2]);
     // fail if there is no .Commit file
-    if( access(".Commit", F_OK) < 0 ) fatalError(".Commit does not exist.");
+    if( access(commitPath, F_OK) < 0 ) fatalError(".Commit does not exist.");
 
     // tell server we are starting push command (push:<project name>)
     char* tellPush = (char*)malloc(strlen("push:") + strlen(argv[2]) + 1);
@@ -650,14 +710,17 @@ void push( int argc, char** argv ) {
     strcat(tellPush,argv[2]);
     send(sock, tellPush, strlen(tellPush) + 1, 0);
     // send over commit file
-    char* commitFileSend = concatFileSpecsWithPath(".Commit",argv[2]);
+    char* commitFileSend = concatFileSpecsWithPath(commitPath,argv[2]);
     send(sock, commitFileSend, strlen(commitFileSend) + 1, 0);
     // read commit file
-    char* commitContents = readFile(".Commit");
+    char* commitContents = readFile(commitPath);
     // send over every file in .Commit
     // tokenize commit
     char* savePtrCommitEntry;
-    char* commitEntry = strtok_r(commitContents,"\n",&savePtrCommitEntry);
+    // copy commitContents for use with strtok
+    char* commitContentsCopy = (char*)malloc(strlen(commitContents)+1);
+    strcpy(commitContentsCopy,commitContents);
+    char* commitEntry = strtok_r(commitContentsCopy,"\n",&savePtrCommitEntry);
     while( commitEntry != NULL ) {
         char* savePtrCommitEntryData;
         // tokenize parts within commit entry
@@ -667,6 +730,7 @@ void push( int argc, char** argv ) {
         char* hash = strtok_r(NULL," ",&savePtrCommitEntryData);
         // get the file contents and send them to server
         char* filecontentFormatted = concatFileSpecsWithPath(filepath, argv[2]);
+        if( DEBUG ) printf("Sent to server: %s\n",filecontentFormatted);
         send(sock, filecontentFormatted, strlen(filecontentFormatted) + 1, 0);
         free(filecontentFormatted);
         // get next entry
@@ -677,14 +741,16 @@ void push( int argc, char** argv ) {
     // get server success
     char maybeSucc[5];
     read(sock,maybeSucc,5);
+    printf("reached\n");
     if( strcmp(maybeSucc,"fail") == 0 ) {
-        printf("Push failed\n");
+        printf("Push failed.\n");
     }
     // remove commit on either response
-    remove(".Commit");
+    remove(commitPath);
     // free
     free(commitContents);
     free(commitFileSend);
+    free(commitPath);
 }
 
 void create( int argc, char** argv ) {

@@ -165,3 +165,23 @@ void sortManifest(char* projectName){
     freeMList(tokenList);
     chdir(".");
 }
+
+void addEntryToManifest( int manifestFd, char* entry ) {
+
+}
+
+int removeEntryFromManifest( char* manifestPath, char* filename ) {
+    // count lines in manifest before manipulation
+    int initialLineCount = lineCount(manifestPath);
+    // build string for tmp manifest
+    int manifestTmpPathLength = strlen(manifestPath) + strlen(".tmp") + 1;
+    char* manifestTmpPath = (char*)malloc(manifestTmpPathLength);
+    sprintf(manifestTmpPath,"%s.tmp",manifestPath);
+    // create tmp manifest
+    int manifestTmpFd = open( manifestTmpPath, O_RDWR | O_CREAT | O_APPEND );
+    // for each entry in the old manifest, if the entry does not contain the path write it out
+    char* manifestContent = readFile(manifestPath);
+    char* manifestEntry = strtok(manifestContent,"\n");
+    // free
+    free(manifestContent);
+}
