@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <fcntl.h>
 #include "definitions.h"
+#include "server/exitLeaks.h"
 
 // definitions
 #define ARUR S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH // (all read user write)
