@@ -54,8 +54,11 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
 
             //need to archive old project
-
-
+            char copyPath[256] = {0};
+            strcat(copyPath, "cp -r ");
+            strcat(copyPath, getVariableData(variableList, "pName"));
+            strcat(copyPath, " backups");
+            system(copyPath);
 
             //append commit to history, and return history contents
             variableList = insertExit(variableList, createNode("commitContents", rwCommitToHistory(new_socket, getVariableData(variableList, "pName")), 1));
@@ -69,11 +72,41 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             //rewrite all modified/added files
             int rewriteSuccess = 42069;
             while(rewriteSuccess != -342){
+                if(rewriteSuccess == -5){
+                    send(new_socket, "fail", sizeof(char) * strlen("fail"), 0);
+                    printf("failure on push\n");
+                    exit(EXIT_FAILURE);
+                }
                 rewriteSuccess = rewriteFileFromSocket(new_socket);
             }
 
             //delete all files meant to be deleted, and also return the version number
             int newVersion = deleteFilesFromPush(getVariableData(variableList, "commitContents"));
+
+            char version[11];
+            sprintf(version, "%s", newVersion);
+            version[strlen(version)] = '\0';
+
+            //got new version, go back and rename backup folder
+            copyPath[0] = '\0';
+            strcat(copyPath, "mv backups/");
+            strcat(copyPath, getVariableData(variableList, "pName"));
+            strcat(copyPath, " ");
+            strcat(copyPath, getVariableData(variableList, "pName"));
+            strcat(copyPath, "-");
+            strcat(copyPath, version);
+            system(copyPath); //renamed it
+
+            //tar it to compress (10 points E.C here TAs :) )
+            copyPath[0] = '\0';
+            strcat(copyPath, "tar -czvf ");
+            strcat(copyPath, getVariableData(variableList, "pName"));
+            strcat(copyPath, "-");
+            strcat(copyPath, version);
+            strcat(copyPath, ".tar.gz");
+            strcat(copyPath, " backups/");
+            strcat(copyPath, getVariableData(variableList, "pName")); //should end up as 'tar -czvf <projectname>-<versnum>.tar.gz backups/<projectname>
+            system(copyPath);
 
             //remake manifest and fill it with the new files
             createManifest(getVariableData(variableList, "pName"), newVersion);
@@ -81,6 +114,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Received push.\n");
             variableList = freeVariable(variableList, "pName");
             variableList = freeVariable(variableList, "commitContents");
+            send(new_socket, "succ", sizeof(char) * strlen("succ"), 0);
         }
 
         //given "manifest:<project name>" sends the .manifest of a project as a char*
@@ -124,7 +158,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Project name: %s\n", getVariableData(variableList, "pName"));
             printf("Sending project files...\n");
             sendProjectFiles(getVariableData(variableList, "pName"), new_socket);
-            sleep(5);
+            sleep(5); //need to let the recursion finish before sending done
             send(new_socket, "done;", sizeof(char) * strlen("done;") + 1, 0);
             variableList = freeVariable(variableList, "pName");
             printf("Finished sending project files.\n");
@@ -208,6 +242,9 @@ void* clientThread(void* use){ //handles each client thread individually via mul
         else if(strstr(clientMessage, "rollback:") != NULL){
             printf("Received \"%s\", fetching then sending files for the requested version of the project.\n", clientMessage);
             int prefixLength = 9;
+            char version[11] = {0};
+            read(new_socket, version, 11);
+
         }
     }
     

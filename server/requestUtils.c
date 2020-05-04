@@ -84,7 +84,7 @@ int rewriteFileFromSocket(int socket){
     unsigned long filesize = strtoul(sizeStr, NULL, 10);
     if( filesize == 0 ) {
         printf("Warning attempting to retrieve empty or non-existent file from server!");
-        return;
+        return -5;
     }
     // get the file path
     char filenameStr[256] = {0};
