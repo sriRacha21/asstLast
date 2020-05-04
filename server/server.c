@@ -180,7 +180,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Finished verifying existence.\n");
             if(success == 0){
                 printf("Project doesn't exist.  Closing thread...\n");
-                break;
+                // break;
             }
             else printf("Project exists.\n");
         }

@@ -1,1 +1,83 @@
-* Client
+* Ran all client commands with server not running
+    * configure
+        * Expected: success (.configure file written out)
+        * Got: success
+    * checkout
+        * Expected: failure (not able to connect)
+        * Got: failure (not able to connect)
+    * update
+        * Expected: failure (not able to connect)
+        * Got: failure (not able to connect)
+    * upgrade
+        * Expected: failure (not able to connect)
+        * Got: failure (not able to connect)
+    * commit
+        * Expected: failure (not able to connect)
+        * Got: failure (not able to connect)
+    * push
+        * Expected: failure (not able to connect)
+        * Got: failure (not able to connect)
+    * create
+        * Expected: failure (not able to connect)
+        * Got: failure (not able to connect)
+    * destroy
+        * Expected: failure (not able to connect)
+        * Got: failure (not able to connect)
+    * add
+        * Expected: failure (not able to connect)
+        * Got: failure (not able to connect)
+    * remove
+        * Expected: failure (not able to connect)
+        * Got: failure (not able to connect)
+    * currentversion
+        * Expected: failure (not able to connect)
+        * Got: failure (not able to connect)
+    * history
+        * Expected: failure (not able to connect)
+        * Got: failure (not able to connect)
+    * rollback
+        * Expected: failure (not able to connect)
+        * Got: failure (not able to connect)
+* Ran client commands with simple sample project while server runs on same iLab machine as client (the following commands were run from top-to-bottom)
+    * configure
+        * Expected: success (.configure file written out)
+        * Got: success
+    * checkout
+        * Expected: downloaded all files from server including .Manifest
+        * Got: success
+            * all files downloaded including .Manifest; perfect copy since all live hashes match all client hashes after copy
+    * update
+        * Before running this, a change was made to a file on the server to simulate a change being made to the project remotely.
+        * Expected: .Update generated indicating that file was changed.
+        * Got: .Update was generated with just that file listed.
+    * upgrade
+        * Expected: Changes from .Commit get reflected to local repository. Result is local and server repository match.
+        * Got: Changes from .Commit got reflected to local.
+    * commit
+        * Before running this, a change was made to a local file in the project to simulate a change being made by a user.
+        * Expected: .Commit generated indicating that a local file was changed.
+        * Got: .Commit generated correctly indicating that the local file was changed.
+    * push
+        * Expected: Files specified in .Commit were sent to server and the changes were reflected on the server version of the project.
+        * Got: Project got files specified in .Commit and client project and server project were both full matches.
+    * create
+        * Expected: Folder gets created locally and server-side for the new project. Both folders are empty except for a new .Manifest and a .History server-side.
+        * Got: Folder gets made both locally and server-side and both have new .Manifests and server has .History also.
+    * destroy
+        * Expected: Folder gets deleted server-side along with .Manifest and .History. Folder stays locally.
+        * Got: Folder got deleted completely deleted server-side. Project still existed locally.
+    * add
+        * Expected: New file gets added to manifest with 0 version and md5 hash, Manifest file is then sorted alphabetically by path.
+        * Got: New entry gets added to manifest with 0 version and hash, then manifest is sorted alphabetically by path.
+    * remove
+        * Expected: Entry gets removed from manifest.
+        * Got: Entry got removed from manifest.
+    * currentversion
+        * Expected: Client prints out numerous messages to stdout indicating the version of the project along with the version and path of each of the files.
+        * Got: Client prints out the version of the project and each of the files.
+    * history
+        * Expected: History file gets sent over to client and then read out directly to stdout then removed locally.
+        * Got: History file got sent over to client then read out to stdout then removed locally.
+    * rollback
+        * Expected: Project deleted all newer versions of project and rolled back version of project to specified version.
+        * Got: Project changed its contents to the version specified and deleted all newer versions.
