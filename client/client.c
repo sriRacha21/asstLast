@@ -20,7 +20,6 @@
 #include "../md5.h"
 #include "../manifestControl.h"
 #include "../server/requestUtils.h"
-#include "../server/exitLeaks.h"
 
 // definitions
 #define FALSE 0
