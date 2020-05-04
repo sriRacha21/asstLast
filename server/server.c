@@ -80,6 +80,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
                 rewriteSuccess = rewriteFileFromSocket(new_socket);
             }
 
+            printf("4\n");
             //delete all files meant to be deleted, and also return the version number
             int newVersion = deleteFilesFromPush(getVariableData(variableList, "commitContents"));
 
@@ -87,6 +88,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             sprintf(version, "%s", newVersion);
             version[strlen(version)] = '\0';
 
+            /*
             //got new version, go back and rename backup folder
             copyPath[0] = '\0';
             strcat(copyPath, "mv backups/");
@@ -96,25 +98,33 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             strcat(copyPath, "-");
             strcat(copyPath, version);
             system(copyPath); //renamed it
+            */
 
+            printf("6\n");
             //tar it to compress (10 points E.C here TAs :) )
             copyPath[0] = '\0';
             strcat(copyPath, "tar -czvf ");
             strcat(copyPath, getVariableData(variableList, "pName"));
             strcat(copyPath, "-");
             strcat(copyPath, version);
-            strcat(copyPath, ".tar.gz");
-            strcat(copyPath, " backups/");
-            strcat(copyPath, getVariableData(variableList, "pName")); //should end up as 'tar -czvf <projectname>-<versnum>.tar.gz backups/<projectname>
-            system(copyPath);
+            strcat(copyPath, ".tar.gz backups/");
+            strcat(copyPath, getVariableData(variableList, "pName")); //should end up as 'tar -czvf <projectname>-<versnum>.tar.gz in backups
+            system(copyPath); //tar -czvf <project>-<varsnum>.tar.gz backups/<project>
 
-            //remake manifest and fill it with the new files
+            //remove the copied non compressed file in backups
+            copyPath[0] = '\0';
+            strcat(copyPath, "rm -rf backups/");
+            strcat(copyPath, getVariableData(variableList, "pName"));
+
+            printf("7\n");
+            //remake manifest and fill it with the new files NEED TO REDO THIS BECAUSE IT INCREMENTS FOR EACH FILE INDIVIDUALLY, 
             createManifest(getVariableData(variableList, "pName"), newVersion);
 
+            printf("8\n");
             printf("Received push.\n");
             variableList = freeVariable(variableList, "pName");
             variableList = freeVariable(variableList, "commitContents");
-            send(new_socket, "succ", sizeof(char) * strlen("succ"), 0);
+            send(new_socket, "succ", sizeof(char) * strlen("succ")+1, 0);
         }
 
         //given "manifest:<project name>" sends the .manifest of a project as a char*
@@ -183,17 +193,16 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         //given "destroy:<project name>" by client, destroys project's files and subdirectories and sends "done" when finished
         else if(strstr(clientMessage, "destroy:") != NULL){
-            printf("Received \"%s\", removing and files and subdirectories of project.\n", clientMessage);
+            printf("Received \"%s\", destroying project.\n", clientMessage);
             prefixLength = 8;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s.  Destroying...\n", getVariableData(variableList, "pName"));
-            int success = destroyProject(getVariableData(variableList, "pName"));
+            char destructionPath[256] = {0};
+            strcat(destructionPath, "rm -rf ");
+            strcat(destructionPath, getVariableData(variableList, "pName"));
+            system(destructionPath);
             variableList = freeVariable(variableList, "pName");
-            if(success) printf("Project has been destroyed.  May it rest in peace.\n");
-            else{
-                printf("Could not destroy project. Closing thread...\n");
-                break;
-            }
+            printf("Project has been destroyed.  May it rest in peace.\n");
             send(new_socket, "done", sizeof(char) * strlen("done") + 1, 0);
         }
 
@@ -239,12 +248,81 @@ void* clientThread(void* use){ //handles each client thread individually via mul
         }
 
         //given "rollback:<project name>" sends all the files in the version of that project.
+        //<projectname>-<versnum>.tar.gz backups/<projectname>
         else if(strstr(clientMessage, "rollback:") != NULL){
-            printf("Received \"%s\", fetching then sending files for the requested version of the project.\n", clientMessage);
+            printf("Received \"%s\", rolling server project to specified version.\n", clientMessage);
             int prefixLength = 9;
+            variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
+
+            //read in version
             char version[11] = {0};
             read(new_socket, version, 11);
+            int versionNum = atoi(version);
 
+            char pathName[256] = {0};
+            //first, delete the current project folder
+            strcat(pathName, "rm -rf ");
+            strcat(pathName, getVariableData(variableList, "pName"));
+            system(pathName);
+
+            //now, untar the specified version's tar and put it here
+            pathName[0] = '\0';
+            strcat(pathName, "tar -zxvf ");
+            strcat(pathName, getVariableData(variableList, "pName"));
+            strcat(pathName, "-");
+            strcat(pathName, version);
+            strcat(pathName, ".tar.gz");
+            system(pathName);
+
+            //now go to the backups folder and delete anything with a bigger version number than what was specified.
+            struct dirent* dirPointer;
+            DIR* currentDir = opendir("backups");
+            if(currentDir == NULL){
+                //uh oh
+                printf("Can't open backups");
+                break;
+            }
+            int pass3 = -1;
+            while((dirPointer = readdir(currentDir)) != NULL){
+                int i, j;
+                int pass1 = 1; int pass2 = 1; 
+                pathName[0] = '\0';
+                strcat(pathName, "backups/");
+                char tempPath[256] = 0;
+                strcat(tempPath, dirPointer->d_name);
+
+                //check if the backup is one a backup of the specified projects
+                for(i = 0; i < strlen(getVariableData(variableList, "pName")); i++){
+                    if(tempPath[i] != getVariableData(variableList, "pName")[i]){
+                        pass1 = -1;
+                        break;
+                    }
+                }
+
+                //check the version of the new thing
+                char secondVersion[11] = {0};
+                for(j = strlen(getVariableData(variableList, "pName")); j < 256; j++){
+                    if(tempPath[j] == '.') break;
+                }
+                strncpy(secondVersion, tempPath+strlen(getVariableData(variableList, "pName"))+1, j - strlen(getVariableData(variableList, "pName"))-1);
+                int secondVersionNum = atoi(secondVersion);
+                if (secondVersionNum < versionNum) pass2 = -1;
+                if(pass1 && (secondVersionNum == versionNum)) pass3 = 1;
+
+                //if its of the same project AND the version number is higher delete it
+                if(pass1 == 1 && pass2 == 1){//bye bitch
+                    char destructionPath[256] = {0};
+                    strcat(destructionPath, "rm -rf backups/");
+                    strcat(destructionPath, dirPointer->d_name);
+                    system(destructionPath);
+                }
+            }
+            closedir(dirPointer);
+
+            if(!pass3){
+                printf("Couldn't find specified version");
+            }
+            printf("Rollback completed.\n");
         }
     }
     

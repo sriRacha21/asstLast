@@ -16,6 +16,9 @@
 #include "../manifestControl.h"
 #include "exitLeaks.h"
 #include "LLSort.h"
+#include "../definitions.h"
+
+#define ARUR S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH // (all read user write)
 
 int deleteFilesFromPush(char* commitContents){ //returns history number
     char* commitCopy = malloc(sizeof(char) * (strlen(commitContents) + 1));
@@ -79,9 +82,12 @@ int rewriteFileFromSocket(int socket){
     while( sizeStr[laggingCursorPosition] != ';' );
     sizeStr[laggingCursorPosition] = '\0';
     // check if the string received is just "done" so we know to stop receiving
-    if( strcmp(sizeStr,"done") == 0 ) return -342;
-    // turn the string into unsigned long
-    unsigned long filesize = strtoul(sizeStr, NULL, 10);
+    if( strcmp(sizeStr,"done") == 0 ) {
+        printf("received 'done', ending push process\n");
+        return -342;
+    }
+    // turn the string into int
+    int filesize = atoi(sizeStr);
     if( filesize == 0 ) {
         printf("Warning attempting to retrieve empty or non-existent file from server!");
         return -5;
@@ -93,25 +99,19 @@ int rewriteFileFromSocket(int socket){
     do {
         laggingCursorPosition = cursorPosition;
         cursorPosition += read(socket, &filenameStr[cursorPosition], 1);
-    } while( filenameStr[cursorPosition] != ';' );
+    } while( filenameStr[cursorPosition-1] != ';' );
     filenameStr[laggingCursorPosition] = '\0';
     createParentDirectories(filenameStr);
     
     // read in the rest of the message
     char* fileContent = (char*)malloc(filesize + 1);
     memset(fileContent, '\0', filesize+1);
-    cursorPosition = 0;
-    int bytesRead = 0;
-    do {
-        bytesRead = read(socket, &fileContent[cursorPosition], filesize);
-        cursorPosition += bytesRead;
-    } while( bytesRead > 0 && cursorPosition < filesize);
-
+    recv(socket, fileContent, filesize, 0);
 
     //rewrite file
     remove(filenameStr);
     writeFile(filenameStr, fileContent);
-
+    printf("Overwrote %s\n", filenameStr);
     free(fileContent);
     return 1;
 }
@@ -125,15 +125,11 @@ char* rwCommitToHistory(int socket, char* projectName){ //returns projects new v
         laggingCursorPosition = cursorPosition;
         cursorPosition += read(socket, &sizeStr[cursorPosition], 1);
     }
-    while( sizeStr[laggingCursorPosition] != ';' );
+    while( sizeStr[laggingCursorPosition] != DELIM );
     sizeStr[laggingCursorPosition] = '\0';
 
-    // turn the string into unsigned long
-    unsigned long filesize = strtoul(sizeStr, NULL, 10);
-    if( filesize == 0 ) {
-        printf("Warning attempting to retrieve empty or non-existent file from server!");
-        return "ERRORERROR123SENDHELP";
-    }
+    // turn the string into int
+    int filesize = atoi(sizeStr);
 
     // read in filepath
     char filenameStr[256] = {0};
@@ -142,18 +138,13 @@ char* rwCommitToHistory(int socket, char* projectName){ //returns projects new v
     do {
         laggingCursorPosition = cursorPosition;
         cursorPosition += read(socket, &filenameStr[cursorPosition], 1);
-    } while( filenameStr[cursorPosition] != ';' );
+    } while( filenameStr[cursorPosition-1] != DELIM );
     filenameStr[laggingCursorPosition] = '\0';
 
     // read in the rest of the message
     char* fileContent = (char*)malloc(filesize + 1);
     memset(fileContent, '\0', filesize+1);
-    cursorPosition = 0;
-    int bytesRead = 0;
-    do {
-        bytesRead = read(socket, &fileContent[cursorPosition], filesize);
-        cursorPosition += bytesRead;
-    } while( bytesRead > 0 && cursorPosition < filesize);
+    recv(socket, fileContent, filesize, 0);
 
     //find the version of the new push
     int i, j;
@@ -172,6 +163,8 @@ char* rwCommitToHistory(int socket, char* projectName){ //returns projects new v
     strcat(filenameStr, projectName);
     strcat(filenameStr, "/.History");
     filenameStr[strlen(filenameStr)] = '\0';
+
+    chmod(filenameStr, ARUR);
 
     //write onto history
     int fd = open(filenameStr, O_RDWR | O_CREAT | O_APPEND);
@@ -205,7 +198,6 @@ char* checkVersion(char* projectName){ //given "current version:<project name>" 
     memset(version, '\0', sizeof(char) * (strlen(token)+1));
     strcat(version, token);
     version[strlen(version)] = '\0'; //get version number from first line
-
 
     free(fileContents);
     free(path);
