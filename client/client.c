@@ -329,7 +329,7 @@ void update( int argc, char** argv ) {
             char* serverPath = serverManifestEntries[i].path;
             char* serverHash = serverManifestEntries[i].hash;
             // write hash to hex
-            char* hexHash = convertHashGivenHash(serverHash);
+            char* hexHash = convertHash(serverPath);
 
             char* toWrite = (char*)malloc(strlen(serverPath)+strlen(hexHash)+5);
             sprintf(toWrite, "D %s %s\n",serverPath,hexHash);
@@ -343,11 +343,11 @@ void update( int argc, char** argv ) {
             char* clientPath = clientManifestEntries[i].path;
             char* clientHash = clientManifestEntries[i].hash;
             // write hash to hex
-            char* hexHash = convertHashGivenHash(clientHash);
+            char* hexHash = convertHash(clientPath);
 
             char* toWrite = (char*)malloc(strlen(clientPath)+strlen(hexHash)+5);
             sprintf(toWrite, "A %s %s\n",clientPath,hexHash);
-            printf("D %s\n",clientPath);
+            printf("A %s\n",clientPath);
             writeFileAppend(fdUpdate, toWrite);
             free(toWrite);
             free(hexHash);
@@ -436,6 +436,11 @@ void upgrade( int argc, char** argv ) {
     // check if .Conflict exists, exit if it does
     if( access( conflictPath, F_OK ) >= 0 ) fatalError("A conflict exists in your project. Resolve the conflicts and update.");
     
+    // increment the version number in it
+    incrementManifestVersion(manifestPath);
+    // open manifest file for writing
+    int manifestFd = open(manifestPath, O_RDWR | O_APPEND);
+
     // check if .Update is empty, delete the file, and tell user project is up-to-date
     char* updateContents = readFile(updatePath);
     if( strlen(updateContents) == 0 ) {
@@ -450,7 +455,12 @@ void upgrade( int argc, char** argv ) {
     strcpy(updateContentsCopy,updateContents);
     char* updateEntry = strtok_r(updateContentsCopy,"\n",&savePtrUpdate);
     while( updateEntry != NULL ) {
-        printf("Update entry: %s\n",updateEntry);
+        if( DEBUG ) printf("Update entry: %s\n",updateEntry);
+        // prevent bad reads
+        if( strlen(updateEntry) < 32 + strlen(argv[2]) + 1 + 1 ) {
+            updateEntry = strtok_r(NULL,"\n",&savePtrUpdate);
+            continue;
+        }
         // start the pointer
         char* savePtrUpdateEntry;
         // parse the entry for tag, file location, hash
@@ -459,14 +469,14 @@ void upgrade( int argc, char** argv ) {
         char* hash = strtok_r(NULL," ",&savePtrUpdateEntry);
         // decide what to do based on tag
         // check if tag exists
-        if( strlen(tag) < 1 ) continue;
+        if( strlen(tag) < 1 ) {
+            updateEntry = strtok_r(NULL,"\n",&savePtrUpdate);
+            continue;
+        }
         // on D delete the entry from the manifest
-        // if( tag[0] == 'D' ) {
-        //     removeEntryFromManifest();
-        // }
+        if( tag[0] == 'D' ) removeEntryFromManifest(manifestPath, filepath);
         // on M or A write the file out
-        // else 
-        if( tag[0] == 'M' || tag[0] == 'A' ) {
+        else if( tag[0] == 'M' || tag[0] == 'A' ) {
             if( tag[0] == 'M' ) remove(filepath);
             // build request to server
             int projectFileNameLength = strlen("specific project file:") + strlen(argv[2]) + strlen(":") + strlen(filepath) + 1;
@@ -480,26 +490,52 @@ void upgrade( int argc, char** argv ) {
             send(sock, projectFileName, projectFileNameLength, 0);
             // read the file and output it
             rwFileFromSocket(sock);
+            // if the tag is M add a new entry with an incremented file version and remove the original entry
+            if( tag[0] == 'M' ) {
+                // save pointer for manifestEntry
+                char*  savePtrManifestEntry;
+                // get the entry from the manifest and the version so we can write out with incremented file version
+                char* manifestEntry = getEntryFromManifest(manifestPath, filepath);
+                if( strcmp(manifestEntry,"") == 0 ) {
+                    updateEntry = strtok_r(NULL,"\n",&savePtrUpdate);
+                    continue;
+                }
+                int version = atoi(strtok_r(manifestEntry," ",&savePtrManifestEntry));
+                char* path = strtok_r(NULL," ",&savePtrManifestEntry);
+                char* newHash = strtok_r(NULL," ",&savePtrManifestEntry);
+                // calculate the livehash
+                char* liveHash = convertHash(path);
+                // remove the entry
+                int linesRemoved = removeEntryFromManifest(manifestPath, filepath);
+                int manifestFd = open(manifestPath, O_RDWR | O_APPEND);
+                printf("Lines removed: %d\n",linesRemoved);
+                // construct a new entry with incremented version
+                version++;
+                char* newEntry = (char*)malloc(100 + 1 + strlen(filepath) + strlen(liveHash));
+                memset(newEntry,'\0',100 + 1 + strlen(filepath) + strlen(liveHash));
+                sprintf(newEntry,"%d %s %s",version,filepath,liveHash);
+                // add the new one
+                printf("Adding new entry to manifest %s\n",newEntry);
+                writeFileAppend(manifestFd, newEntry);
+                writeFileAppend(manifestFd, "\n");
+            }
+            // if the tag is A just add a new entry with 0 file version
+            if( tag[0] == 'A' ) {
+                char* newEntry = (char*)malloc(strlen("0 ") + strlen(filepath) + strlen(hash));
+                memset(newEntry,'\0',strlen("0 ") + strlen(filepath) + strlen(hash));
+                sprintf(newEntry,"0 %s %s",filepath,hash);
+                writeFileAppend(manifestFd, newEntry);
+            }
         }
         // update tokenizer
         updateEntry = strtok_r(NULL,"\n",&savePtrUpdate);
     }
-    // replace the old manifest with the server manifest
-    remove(manifestPath);
-    // tell server we need the manifest, assume send is blocking
-    int manifestRequestLength = strlen("manifest:") + strlen(argv[2]) + 1;
-    char* manifestRequest = (char*)malloc(manifestRequestLength);
-    memset(manifestRequest,'\0',manifestRequestLength);
-    strcat(manifestRequest,"manifest:");
-    strcat(manifestRequest,argv[2]);
-    // send a request to the server for the manifest
-    send(sock, manifestRequest, manifestRequestLength, 0);
-    char* serverManifest = readManifestFromSocket(sock);
-    writeFile(manifestPath,serverManifest);
+    // sort the manifest
+    sortManifest(argv[2]);
     // delete the update file
     remove(updatePath);
     // close file
-    // close(newManifestFd);
+    close(manifestFd);
     // free
     free(updateContents);
     free(updateContentsCopy);
@@ -661,7 +697,6 @@ void commit( int argc, char** argv ) {
         // 2. server has a greater file version than conflict
         if( strcmp(serverManifestEntry.hash,clientManifestEntry.hash) != 0 && serverManifestEntry.version > clientManifestEntry.version ) {
             failure = TRUE;
-            free(clientHexHash);
             free(liveHexHash);
             break;
         }
@@ -741,7 +776,6 @@ void push( int argc, char** argv ) {
     // get server success
     char maybeSucc[5];
     read(sock,maybeSucc,5);
-    printf("reached\n");
     if( strcmp(maybeSucc,"fail") == 0 ) {
         printf("Push failed.\n");
     }
@@ -789,8 +823,13 @@ void add( int argc, char** argv ) {
     // check if the project exists on the server
     doesProjectExist(sock, argv[2]);
 
+    // build path to manifest
+    int manifestPathLength = strlen(argv[2]) + strlen("/.Manifest") + 1;
+    char* manifestPath = (char*)malloc(manifestPathLength);
+    memset(manifestPath,'\0',manifestPathLength);
+    snprintf(manifestPath,manifestPathLength,"%s/.Manifest",argv[2]);
     // append to manifest file
-    int manifestFd = open(".Manifest", O_RDWR | O_APPEND );
+    int manifestFd = open(manifestPath, O_RDWR | O_APPEND );
     // if manifest doesn't exist, exit
     if( manifestFd < 0 ) fatalError(".Manifest was not found. Make sure there is a project in this directory.");
 
@@ -813,47 +852,62 @@ void removePr( int argc, char** argv ) {
     // check if the project exists on the server
     doesProjectExist(sock, argv[2]);
 
-    // build path to project folder/manifest
-    int projectFolderManifestSize = strlen(argv[2])+1+strlen(argv[3]);
-    char* projectFolderManifest = (char*)malloc(projectFolderManifestSize);
-    memset(projectFolderManifest,'\0',projectFolderManifestSize);
-    sprintf(projectFolderManifest,"%s/%s",argv[2],argv[3]);
-    // check if the old manifest file exists
-    if( access(projectFolderManifest, F_OK) < 0 ) fatalError(".Manifest does not exist. Make sure there is a project in this directory.");
-    // read in the old manifest
-    char* manifestContents = readFile(projectFolderManifest);
-    // create temporary manifest file
-    int tempManifestFd = open(".Manifest.tmp", O_RDWR | O_CREAT | O_APPEND );
-    // count lines of old manifest
-    int manifestLineCount = lineCount(projectFolderManifest);
-    // prep for manifest copying
-    char* savePtrManifest;
-    char* manifestEntry = strtok_r(manifestContents,"\n",&savePtrManifest);
-    // write out the version to the temp manifest
-    writeFileAppend(tempManifestFd,manifestEntry);
-    // copy entries in the manifest file if they don't match the filename
-    while( manifestEntry != NULL ) {
-        // update manifestEntry
-        manifestEntry = strtok(NULL,"\n");
-        // tokenize each entry
-        char* savePtrManifestEntry;
-        char* version = strtok_r(manifestEntry," ",&savePtrManifestEntry);
-        char* path = strtok_r(NULL," ",&savePtrManifestEntry);
-        char* hash = strtok_r(NULL," ",&savePtrManifestEntry);
-        // check for match
-        if( strcmp(argv[3],path) != 0 ) // if there is no match, write out
-            writeFileAppend(tempManifestFd, manifestEntry);
-    }
-    // count lines of new manifest
-    int newManifestLineCount = lineCount(".Manifest.tmp");
-    if( manifestLineCount == newManifestLineCount )
-        printf("File could not be found in manifest.");
-    // remove old manifest
-    remove(projectFolderManifest);
-    // rename new manifest, moving it to the project directory
-    rename(".Manifest.tmp",projectFolderManifest);
-    // free
-    free(manifestContents);
+    // build path to manifest
+    int manifestPathLength = strlen(argv[2]) + strlen("/.Manifest") + 1;
+    char* manifestPath = (char*)malloc(manifestPathLength);
+    memset(manifestPath,'\0',manifestPathLength);
+    snprintf(manifestPath,manifestPathLength,"%s/.Manifest",argv[2]);
+    // remove entry
+    removeEntryFromManifest(manifestPath, argv[3]);
+    // // build path to project folder/manifest
+    // int projectFolderManifestSize = strlen(argv[2])+strlen("/.Manifest")+1;
+    // char* projectFolderManifest = (char*)malloc(projectFolderManifestSize);
+    // memset(projectFolderManifest,'\0',projectFolderManifestSize);
+    // sprintf(projectFolderManifest,"%s%s",argv[2],"/.Manifest");
+    // // build string for tmp manifest
+    // int manifestTmpPathLength = strlen(projectFolderManifest) + strlen(".tmp") + 1;
+    // char* manifestTmpPath = (char*)malloc(manifestTmpPathLength);
+    // sprintf(manifestTmpPath,"%s.tmp",projectFolderManifest);
+    // // check if the old manifest file exists
+    // if( access(projectFolderManifest, F_OK) < 0 ) fatalError(".Manifest does not exist. Make sure there is a project in this directory.");
+    // // read in the old manifest
+    // char* manifestContents = readFile(projectFolderManifest);
+    // // create temporary manifest file
+    // int tempManifestFd = open(manifestTmpPath, O_RDWR | O_CREAT | O_APPEND );
+    // // count lines of old manifest
+    // char* manifestContent = readFile(projectFolderManifest);
+    // int manifestLineCount = lineCount(manifestContent);
+    // free(manifestContent);
+    // // prep for manifest copying
+    // char* savePtrManifest;
+    // char* manifestEntry = strtok_r(manifestContents,"\n",&savePtrManifest);
+    // // write out the version to the temp manifest
+    // writeFileAppend(tempManifestFd,manifestEntry);
+    // // copy entries in the manifest file if they don't match the filename
+    // while( manifestEntry != NULL ) {
+    //     // update manifestEntry
+    //     manifestEntry = strtok(NULL,"\n");
+    //     // tokenize each entry
+    //     char* savePtrManifestEntry;
+    //     char* version = strtok_r(manifestEntry," ",&savePtrManifestEntry);
+    //     char* path = strtok_r(NULL," ",&savePtrManifestEntry);
+    //     char* hash = strtok_r(NULL," ",&savePtrManifestEntry);
+    //     // check for match
+    //     if( strcmp(argv[3],path) != 0 ) // if there is no match, write out
+    //         writeFileAppend(tempManifestFd, manifestEntry);
+    // }
+    // // count lines of new manifest
+    // char* manifestTmpContents = readFile(manifestTmpPath);
+    // int newManifestLineCount = lineCount(manifestTmpContents);
+    // free(manifestTmpContents);
+    // if( manifestLineCount == newManifestLineCount )
+    //     printf("File could not be found in manifest.");
+    // // remove old manifest
+    // remove(projectFolderManifest);
+    // // rename new manifest, moving it to the project directory
+    // rename(manifestTmpPath,projectFolderManifest);
+    // // free
+    // free(manifestContents);
 }
 
 void currentVersion( int argc, char** argv ) {

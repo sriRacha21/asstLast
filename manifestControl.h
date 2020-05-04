@@ -5,3 +5,6 @@ void fillManifest(char* ogPath, char* writeTo, int version);
 void sortManifest(char* projectName);
 char* convertHash(char* filePath);
 char* convertHashGivenHash(char* hash);
+void incrementManifestVersion( char* manifestPath );
+char* getEntryFromManifest( char* manifestPath, char* filename );
+int removeEntryFromManifest( char* manifestPath, char* filename );

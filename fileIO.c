@@ -39,7 +39,7 @@ char* readFile(char *filename) {
     // open the file for reading
     int fd = open(filename, O_RDONLY);
     if( fd < 0 ) {
-        printf("Could not read file %s.\n");
+        printf("Could not read file %s.\n", filename);
         exit(1);
     }
     // find out how big the file is

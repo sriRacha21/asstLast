@@ -10,12 +10,15 @@
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
+#include <sys/stat.h>
 #include "fileIO.h"
 #include "server/requestUtils.h"
 #include "server/exitLeaks.h"
 #include "manifestControl.h"
 #include "md5.h"
 #include "server/LLSort.h"
+
+#define ARUR S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH // (all read user write)
 
 /*  HASH FUNCTION (MD5)  */
 void md5hash(char* input, char* buffer) {
@@ -163,16 +166,55 @@ void sortManifest(char* projectName){
     free(version);
     free(manifestContents);
     freeMList(tokenList);
-    chdir(".");
+    chdir("..");
 }
 
-void addEntryToManifest( int manifestFd, char* entry ) {
+char* getEntryFromManifest( char* manifestPath, char* filename ) {
+    // for each entry in the old manifest, if the entry does not contain the path write it out
+    char* manifestContent = readFile(manifestPath);
+    char* manifestEntry = strtok(manifestContent,"\n");
+    manifestEntry = strtok(NULL,"\n");
+    while( manifestEntry != NULL ) {
+        // check if path is in entry
+        if( strstr(manifestEntry,filename) != NULL ) {
+            char* manifestEntryCopy = (char*)malloc(strlen(manifestEntry)+1);
+            strcpy(manifestEntryCopy,manifestEntry);
+            free(manifestContent);
+            return manifestEntryCopy;
+        }
+        // move string for tokenizer
+        manifestEntry = strtok(NULL,"\n");
+    }
+    free(manifestContent);
+    return "";
+}
 
+void incrementManifestVersion( char* manifestPath ) {
+    char* manifestContents = readFile(manifestPath);
+    char* manifestVersionStr = strtok(manifestContents,"\n");
+    int manifestVersion = atoi(manifestVersionStr);
+    manifestVersion++;
+    remove(manifestPath);
+    int fd = open( manifestPath, O_RDWR | O_APPEND | O_CREAT );
+    char* manifestVersionNewStr = (char*)malloc(strlen(manifestVersionStr)+3);
+    sprintf(manifestVersionNewStr,"%d\n",manifestVersion);
+    writeFileAppend(fd,manifestVersionNewStr);
+    char* token = strtok(NULL,"\n");
+    while( token != NULL ) {
+        writeFileAppend(fd,token);
+        writeFileAppend(fd,"\n");
+        token = strtok(NULL,"\n");
+    }
+
+    // chmod
+    chmod( manifestPath, ARUR );
+    // close
+    close(fd);
+    // free
+    free(manifestContents);
 }
 
 int removeEntryFromManifest( char* manifestPath, char* filename ) {
-    // count lines in manifest before manipulation
-    int initialLineCount = lineCount(manifestPath);
     // build string for tmp manifest
     int manifestTmpPathLength = strlen(manifestPath) + strlen(".tmp") + 1;
     char* manifestTmpPath = (char*)malloc(manifestTmpPathLength);
@@ -181,7 +223,35 @@ int removeEntryFromManifest( char* manifestPath, char* filename ) {
     int manifestTmpFd = open( manifestTmpPath, O_RDWR | O_CREAT | O_APPEND );
     // for each entry in the old manifest, if the entry does not contain the path write it out
     char* manifestContent = readFile(manifestPath);
+    // count lines in manifest before manipulation
+    int initialLineCount = lineCount(manifestContent);
+    // prep for looping on entries
     char* manifestEntry = strtok(manifestContent,"\n");
+    writeFileAppend(manifestTmpFd,manifestEntry);
+    writeFileAppend(manifestTmpFd,"\n");
+    manifestEntry = strtok(NULL,"\n");
+    while( manifestEntry != NULL ) {
+        // check if path is in entry
+        if( strstr(manifestEntry,filename) == NULL ) {
+            writeFileAppend(manifestTmpFd,manifestEntry);
+            writeFileAppend(manifestTmpFd,"\n");
+        }
+        // move string for tokenizer
+        manifestEntry = strtok(NULL,"\n");
+    }
+    chmod(manifestTmpPath,ARUR);
+    char* manifestTmpFileContent = readFile(manifestTmpPath);
+    // count lines in new manifest
+    int finalLineCount = lineCount(manifestTmpFileContent);
+    // rename new one
+    rename(manifestTmpPath,manifestPath);
+    chmod( manifestPath, ARUR );
+    // close
+    close(manifestTmpFd);
     // free
+    free(manifestTmpPath);
+    free(manifestTmpFileContent);
     free(manifestContent);
+    // if the final line count is equal to initial line count, return 0, otherwise 1
+    return initialLineCount - finalLineCount;
 }
