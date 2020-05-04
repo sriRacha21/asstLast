@@ -1,3 +1,4 @@
+#define MAX_THREADS 60
 struct exitNode{
     char* variableName;
     char* variableData;
@@ -5,6 +6,11 @@ struct exitNode{
 };
 
 struct exitNode* variableList;
+//pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock;
+pthread_t threadID[60];
+int threadCounter;
+//int threadCounter = 0;
 
 char* returnMallocCopyOfName(struct exitNode* head, char* token);
 int whatDoWithToken(struct exitNode* head, char* token);

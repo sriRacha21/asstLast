@@ -123,6 +123,11 @@ void freeAllMallocs(struct exitNode* head){
 
 void cleanUp(){ //call at atexit
     freeAllMallocs(variableList);
+    if(threadCounter >= MAX_THREADS){
+        threadCounter = 0;
+        while(threadCounter < MAX_THREADS) pthread_join(threadID[threadCounter++], NULL);
+        threadCounter = 0;
+    }
     printf("Reached atexit().  Server is now shutting down...\n");
 }
 

@@ -15,14 +15,10 @@
 #include "../fileIO.h"
 #include "../manifestControl.h"
 
-#define MAX_THREADS 60
-
 void* clientThread(void* use);
 
 char clientMessage[1024] = {0};
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_t threadID[60];
-int threadCounter = 0;
 
 void* clientThread(void* use){ //handles each client thread individually via multithreading
     printf("Thread successfully started for client socket.\n");
@@ -329,6 +325,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 int main(int argc, char** argv){
     atexit(cleanUp);
     variableList = NULL;
+    threadCounter = 0;
 
     int PORT;
     

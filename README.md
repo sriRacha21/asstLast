@@ -6,6 +6,13 @@
 ### Server Program: `WTFserver`
 * Run with `./WTFserver <port>`
 * Running this binary with a port will bind the server to that port. Ensure this runs in the background of some machine you want to host the version control server on.
+* `Multithreading Design`
+    * When the server is launched, it will also initialize an array of process IDs in preparation for multithreading.
+        * There is a maximum of 60 threads that can be handled at once.
+    * Whenever a new WTF client connects, it is passed to the clientThread() method, in which it responds to all the demands of the client.  After the client sends a signal that it is finished, the server closes the thread and deals with the next thread, if there was one waiting for a mutex unlock.
+    * If the WTFserver closes unexpectedly, the server is to close all threads that may be running and free all allocated memory upon exiting.
+    * Each server utilizes mutexes in order to make sure any simultaneously running threads cannot both modify a repository at the same time.
+        * When dealing with a repository's contents, the mutex is locked.  Once the WTF client signals that it is done, the mutex is unlocked.
 ### Client Program: `WTF`
 * `./WTF configure <IP> <port>`
     * Configure the client to connect to the IP (this is the remote IP of the machine the server is running on)
