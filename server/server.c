@@ -88,18 +88,6 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             sprintf(version, "%s", newVersion);
             version[strlen(version)] = '\0';
 
-            /*
-            //got new version, go back and rename backup folder
-            copyPath[0] = '\0';
-            strcat(copyPath, "mv backups/");
-            strcat(copyPath, getVariableData(variableList, "pName"));
-            strcat(copyPath, " ");
-            strcat(copyPath, getVariableData(variableList, "pName"));
-            strcat(copyPath, "-");
-            strcat(copyPath, version);
-            system(copyPath); //renamed it
-            */
-
             printf("6\n");
             //tar it to compress (10 points E.C here TAs :) )
             copyPath[0] = '\0';
@@ -117,8 +105,9 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             strcat(copyPath, getVariableData(variableList, "pName"));
 
             printf("7\n");
-            //remake manifest and fill it with the new files NEED TO REDO THIS BECAUSE IT INCREMENTS FOR EACH FILE INDIVIDUALLY, 
-            createManifest(getVariableData(variableList, "pName"), newVersion);
+            //update manifest
+            commitToManifest(getVariableData(variableList, "pName"),
+             getVariableData(variableList, "commitContents"), newVersion);
 
             printf("8\n");
             printf("Received push.\n");

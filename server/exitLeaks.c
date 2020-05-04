@@ -13,6 +13,34 @@
 #include <errno.h>
 #include "exitLeaks.h"
 
+char* returnMallocCopyOfName(struct exitNode* head, char* token){
+    struct exitNode* current = head;
+    while(current != NULL){
+        if(strstr(current->variableName, token) != NULL){
+            char* toReturn = malloc(sizeof(char) * strlen(current->variableName)+1);
+            memset(toReturn, '\0', sizeof(char) * strlen(current->variableName)+1);
+            strcpy(toReturn, current->variableName);
+            toReturn[strlen(toReturn)] = '\0';
+            return toReturn;
+        }
+        current = current->next;
+    }
+}
+
+int whatDoWithToken(struct exitNode* head, char* token){
+    int toReturn = -1;
+    struct exitNode* current = head;
+    while(current != NULL){
+        if(strstr(current->variableName, token) != NULL){
+            if(current->variableData[0] == 'A') return 1;
+            else if(current->variableData[0] == 'D') return 2;
+            else if(current->variableData[0] == 'M') return 3;
+        }
+        current = current->next;
+    }
+    return toReturn;
+}
+
 struct exitNode* createNode(char* vName, char* vData, int freeMode){
     struct exitNode* toReturn = malloc(sizeof(struct exitNode));
     toReturn->variableName = malloc(sizeof(char) * strlen(vName) + 1);

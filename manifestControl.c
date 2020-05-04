@@ -28,6 +28,95 @@ void md5hash(char* input, char* buffer) {
     MD5_Final(buffer,&md5);
 }
 
+void commitToManifest(char* projectName, char* commitContents, int newVersion){
+    char filePath[256] = {0};
+    strcat(filePath, projectName);
+    strcat(filePath, "/.Manifest");
+
+    //take a copy of manifest and commit so we can tokenize
+    char* manifestCopy = readFile(filePath);
+    char* commitCopy = malloc(sizeof(char) * strlen(commitContents)+1);
+    strcpy(commitCopy, commitContents);
+    commitCopy[strlen(commitCopy)] = '\0';
+
+    //remove manifest if it do be existin already das wild yo
+    remove(filePath);
+
+    //go through old manifest and add everything that was there, after topping it with new version number
+    createManifest(projectName, newVersion);
+    int fd = open(filePath, O_RDWR | O_CREAT | O_APPEND);
+    char* token;
+    //get old version number out of the way we are not using this
+    token = strtok(manifestCopy, "\n");
+    //first real token
+    token = strtok(NULL, "\n");
+    while(token != NULL){ //fill up new manifest with old manifest contents
+        writeFileAppend(fd, token);
+        writeFileAppend(fd, "\n");
+        token = strtok(NULL, "\n");
+    }
+
+    //now go through commit and make the appropriate changes
+    //gonna be repurposing exitNodes for this
+    char* token2;
+    struct exitNode* commitList = NULL;
+    //first token
+    token2 = strtok(commitCopy, "\n");
+    while(token2 != NULL){
+        char mode[2] = {0};
+        char data[400] = {0};
+        strncpy(mode, token2, 1);
+        strncpy(data, token2+2, strlen(token2)-2);
+        commitList = insertExit(commitList, createNode(data, mode, 0));
+        token2 = strtok(NULL, "\n");
+    }
+
+
+    //now we have a linked list of changes and its associated manifest entry by rewriting yet again
+    //go thru and make da changes, editing if M, deleting if D, add if 0
+    char* manifestSecondCopy = readFile(filePath);
+    remove(filePath);
+    createManifest(projectName, newVersion);
+
+    int fd2 = open(filePath, O_RDWR | O_CREAT | O_APPEND);
+
+    char* token3;
+    token3 = strtok(manifestSecondCopy, "\n"); //version token again ignore
+    token3 = strtok(NULL, "\n");
+    while(token3 != NULL){
+        //find the filepath of the token
+        char token3Path[400] = {0};
+        int i, j;
+        for(i = 0; i < strlen(token3); i++){
+            if(token3[i] == ' ') break;
+        }
+        i++;
+        for(j = i; j < strlen(token3); j++){
+            if(token3[j] == ' ') break;
+        }
+        strncpy(token3Path, token3+i, j - i);
+        //1 = A ; 2 = D ; 3 = M ; -1 = do nothing
+        int whatToDo = whatDoWithToken(commitList, token3Path);
+        if(whatToDo == -1){ //no change, add it back into the manifest as is
+            writeFileAppend(fd2, token3);
+            writeFileAppend(fd2, "\n");
+        }
+        else if(whatToDo == 1 || whatToDo == 3){ //changed, add the one from the commit LL
+            char* toAppend = returnMallocCopyOfName(commitList, token3Path);
+            writeFileAppend(fd2, toAppend);
+            writeFileAppend(fd2, "\n");
+            free(toAppend);
+        }
+        token3 = strtok(NULL, "\n");
+    }
+
+    sortManifest(projectName);
+    free(manifestCopy);
+    free(commitCopy);
+    free(manifestSecondCopy);
+    freeAllMallocs(commitList);
+}
+
 void createManifest(char* projectName, int versionNum){
     char* filePath = malloc(sizeof(char) * (strlen(projectName) + 12));
     memset(filePath, '\0', sizeof(char) * (strlen(projectName) + 12));
@@ -44,8 +133,8 @@ void createManifest(char* projectName, int versionNum){
     int fd = open(filePath, O_RDWR | O_CREAT | O_APPEND);
     writeFileAppend(fd, "\n");
 
-    fillManifest(projectName, filePath, versionNum);
-    sortManifest(projectName);
+    //fillManifest(projectName, filePath, versionNum);
+    //sortManifest(projectName);
     free(filePath);
 }
 
@@ -56,46 +145,6 @@ void createHistory(char* projectName){
     strcat(filePath, "/.History");
     writeFile(filePath, ""); ////create .History file
     free(filePath);
-}
-
-void fillManifest(char* ogPath, char* writeTo, int version){
-    char path[256] = {0};
-    char versionStr[11] = {0};
-    sprintf(versionStr, "%s", version);
-    versionStr[strlen(versionStr)] = '\0';
-
-    struct dirent* dirPointer;
-    DIR* currentDir = opendir(ogPath);
-    if(!currentDir) return;
-    while((dirPointer = readdir(currentDir)) != NULL){
-        if(strcmp(dirPointer->d_name, ".") != 0 && strcmp(dirPointer->d_name, "..") != 0){
-            if(dirPointer->d_type == 8 && dirPointer->d_name[0] != '.'){
-                int fd = open(writeTo, O_RDWR | O_CREAT | O_APPEND);
-                writeFileAppend(fd, versionStr);
-                writeFileAppend(fd, " ");
-                writeFileAppend(fd, ogPath);
-                writeFileAppend(fd, "/");
-                writeFileAppend(fd, dirPointer->d_name);
-                writeFileAppend(fd, " ");
-
-                char* relativePath = malloc(sizeof(char) * (strlen(ogPath) + 1 + strlen(dirPointer->d_name) + 1));
-                strcat(relativePath, ogPath);
-                strcat(relativePath, "/");
-                strcat(relativePath, dirPointer->d_name);
-                relativePath[strlen(relativePath)] = '\0';
-                char* hashTransposed = convertHash(relativePath);
-                writeFileAppend(fd, hashTransposed);
-                free(hashTransposed);
-
-                writeFileAppend(fd, "\n");
-            }
-            strcpy(path, ogPath);
-            strcat(path, "/");
-            strcat(path, dirPointer->d_name);
-            fillManifest(path, writeTo, version);
-        }
-    }
-    closedir(currentDir);
 }
 
 char* convertHash(char* filePath){

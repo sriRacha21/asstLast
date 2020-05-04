@@ -1,7 +1,7 @@
 void md5hash(char* input, char* buffer);
+void commitToManifest(char* projectName, char* commitContents, int newVersion);
 void createManifest(char* projectName, int versionNum);
 void createHistory(char* projectName);
-void fillManifest(char* ogPath, char* writeTo, int version);
 void sortManifest(char* projectName);
 char* convertHash(char* filePath);
 char* convertHashGivenHash(char* hash);
