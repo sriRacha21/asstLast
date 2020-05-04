@@ -51,3 +51,26 @@
         * Ran with version that the server has not reached yet.
         * Ran with version that the server is already on.
         * Ran with version that the server is ahead of.
+
+* Server-side testing
+    * Binding to a specified port 
+        * Ensured a non-number would not be taken.
+        * Ensured that the number would only be accepted if it fit within the acceptable range of port numbers.
+    * Dealing with the manifest 
+        * Tested string manipulation methods to get filepath and such.
+        * Tested sorting algorithm on new .Manifest file.
+    * Mutexes
+        * Ensured using fork() that once a mutex is locked, no other threads would be able to tamper with the information while the original thread was using it.
+    * Multithreading
+        * First ensured that the server was able to accept at least one thread.
+        * Next, used fork() to test if multiple connects were being entertained.
+    * Freeing on sudden exit
+        * Tested common linked list algorithms and methods in exitLeaks.c to ensure they were usable for the purpose of freeing.
+        * Next, stored dummy variables into them to check whether or not they were stored correctly.
+        * Next, freed a single node's contents to check if this was done correctly.
+        * Finally, ran a method to check whether or not it could free an entire linked list correctly.
+        * After initial testing, implemented the use of this linked list to store all the memory allocations in server.  Once the server closed for any reason, checked to make sure all 
+        mallocs were freed appropriately.
+    * ./WTF commands
+        * See above
+

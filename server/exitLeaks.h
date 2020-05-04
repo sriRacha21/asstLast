@@ -7,7 +7,6 @@ struct exitNode{
 
 struct exitNode* variableList;
 //pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t lock;
 pthread_t threadID[60];
 int threadCounter;
 //int threadCounter = 0;
