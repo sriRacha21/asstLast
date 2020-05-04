@@ -182,7 +182,7 @@ void createProjectFolder(char* projectName){ //used in "create:<project name>"
     createHistory(projectName);
 }
 
-char* checkVersion(char* projectName){ //given "current version:<project name>" gives version from manifest. need to free what it gives
+char* checkVersion(char* projectName, int socket){ //given "current version:<project name>" gives version from manifest. need to free what it gives
     char* path = malloc(sizeof(char) * (strlen(projectName) + 1 + 9 + 1));
     memset(path, '\0', sizeof(char) * (strlen(projectName) + 1 + 9 + 1));
     strcat(path, projectName);
@@ -198,74 +198,30 @@ char* checkVersion(char* projectName){ //given "current version:<project name>" 
     memset(version, '\0', sizeof(char) * (strlen(token)+1));
     strcat(version, token);
     version[strlen(version)] = '\0'; //get version number from first line
+    send(socket, version, strlen(version)+1, 0);//send version number
+
+    while(token != NULL){
+        int i, j;
+        char version[11] = {0};
+        char filePath[256] = {0};
+        for(i = 0; i < strlen(token); i++){
+            if(token[i] == ' ')break;
+        }
+        strncpy(version, token, i);
+        i++;
+        for(j = i; j < strlen(token); j++){
+            if(token[j] == ' ') break;
+        }
+        strncpy(filePath, token+i, j - i);
+        send(socket, version, strlen(version)+1, 0);
+        send(socket, filePath, strlen(filePath)+1, 0);
+
+        token = strtok(NULL, "\n");
+    }
 
     free(fileContents);
     free(path);
     return version;
-}
-
-int destroyProject(char* projectName){ //checks if project exists, then destroys it if it does. used in "destroy:<pname"
-    struct dirent* dirPointer;
-    DIR* currentDir = opendir("."); //idk if this is right
-    if(currentDir == NULL){
-        printf("Can't open directory.\n");
-        return -1;
-    }
-    int found = -342;
-    while((dirPointer = readdir(currentDir)) != NULL){
-        if(strcmp(projectName, dirPointer->d_name) == 0 && dirPointer->d_type == 4){
-            closedir(currentDir);
-            found = 42069;
-        } 
-    }
-    closedir(currentDir);
-    if(found == -342){
-        printf("Project not found.\n");
-        return -1;
-    }
-    destroyFiles(projectName);
-    destroyFolders(projectName);
-    destroyFolders(projectName);
-    destroyFolders(projectName);
-    return 1;
-}
-
-void destroyFiles(char* projectName){
-    char path[256];
-    struct dirent* dirPointer;
-    DIR* currentDir = opendir(projectName);
-    if(!currentDir) return; //end recursion
-    while((dirPointer = readdir(currentDir)) != NULL){
-        if(strcmp(dirPointer->d_name, ".") != 0 && strcmp(dirPointer->d_name, "..") != 0){
-            strcpy(path, projectName);
-            strcat(path, "/");
-            strcat(path, dirPointer->d_name);
-            printf("%s\n", path);
-            remove(path);
-            destroyFiles(path);
-        }
-    }
-    closedir(currentDir);
-    return;
-}
-
-void destroyFolders(char* projectName){
-    char path[256];
-    struct dirent* dirPointer;
-    DIR* currentDir = opendir(projectName);
-    if(!currentDir) return; //end recursion
-    while((dirPointer = readdir(currentDir)) != NULL){
-        if(strcmp(dirPointer->d_name, ".") != 0 && strcmp(dirPointer->d_name, "..") != 0){
-            strcpy(path, projectName);
-            strcat(path, "/");
-            strcat(path, dirPointer->d_name);
-            printf("%s\n", path);
-            rmdir(path);
-            destroyFolders(path);
-        }
-    }
-    closedir(currentDir);
-    return;
 }
 
 char* getSpecificFileSpecs(char* projectName, char* filePath){

@@ -208,14 +208,17 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         //given "current version:<project name> by client, retreives and sends project's current version from the active .Manifest"
         else if(strstr(clientMessage, "current version:") != NULL){
-            printf("Received \"%s\", fetching and sending current version of the project as listed in the .Manifest.\n", clientMessage);
+            printf("Received \"%s\", fetching and sending...\n", clientMessage);
             prefixLength = 16;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s.  Getting version number...\n", getVariableData(variableList, "pName"));
-            variableList = insertExit(variableList, createNode("currentVersion", checkVersion(getVariableData(variableList, "pName")), 0));
+            /*variableList = insertExit(variableList, createNode("currentVersion", checkVersion(getVariableData(variableList, "pName")), 0));
             printf("Version number: %s.  Sending...\n", getVariableData(variableList, "currentVersion"));
-            send(new_socket, getVariableData(variableList, "currentVersion"), strlen(getVariableData(variableList, "currentVersion"))+1, 0);
+            send(new_socket, getVariableData(variableList, "currentVersion"), strlen(getVariableData(variableList, "currentVersion"))+1, 0);*/
+            checkVersion(getVariableData(variableList, "pName"), new_socket);
             printf("Sent version number.\n");
+            send(new_socket, "done", strlen("done")+1, 0);
+
             variableList = freeVariable(variableList, "pName");
             variableList = freeVariable(variableList, "currentVersion");
         }
