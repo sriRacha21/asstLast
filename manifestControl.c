@@ -147,7 +147,27 @@ void sortManifest(char* projectName){
         memset(forNode, '\0', sizeof(char) * (strlen(token)+1));
         strcat(forNode, token);
         forNode[strlen(forNode)] = '\0';
-        tokenList = insertManifest(tokenList, createMNode(forNode));
+
+        //get filepath
+        int i, j;
+        char version[11];
+        char filePath[256];
+        for(i = 0; i < strlen(forNode); i++){
+            if(forNode[i] == ' ')break;
+        }
+        strncpy(version, forNode, i);
+        i++;
+        for(j = i; j < strlen(forNode); j++){
+            if(forNode[j] == ' ') break;
+        }
+        strncpy(filePath, forNode+i, j-i);
+        free(forNode);
+        char* forNode2 = malloc(sizeof(char) * strlen(filePath)+1);
+        memset(forNode2, '\0', strlen(filePath)+1);
+        strcat(forNode2, filePath);
+        forNode2[strlen(forNode2)] = '\0';
+
+        tokenList = insertManifest(tokenList, createMNode(forNode2));
     }
     int (*comparator)(void*, void*);
     (comparator) = stringCmp;
