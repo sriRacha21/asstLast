@@ -288,7 +288,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
                 int pass1 = 1; int pass2 = 1; 
                 pathName[0] = '\0';
                 strcat(pathName, "backups/");
-                char tempPath[256] = 0;
+                char tempPath[256] = {0};
                 strcat(tempPath, dirPointer->d_name);
 
                 //check if the backup is one a backup of the specified projects
@@ -317,7 +317,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
                     system(destructionPath);
                 }
             }
-            closedir(dirPointer);
+            closedir(currentDir);
 
             if(!pass3){
                 printf("Couldn't find specified version");
