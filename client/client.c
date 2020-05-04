@@ -42,6 +42,8 @@ void destroy( int argc, char** argv );
 void add( int argc, char** argv );
 void removePr( int argc, char** argv );
 void currentVersion( int argc, char** argv );
+void history( int argc, char** argv );
+void rollback( int argc, char** argv );
 
 /*  HELPERS */
 void warning(char* message) { printf("Warning: %s\n"); }
@@ -111,6 +113,8 @@ int main( int argc, char** argv ) {
     if( strcmp(argv[1],"add") == 0 ) add( argc, argv );
     if( strcmp(argv[1],"remove") == 0 ) removePr( argc, argv );
     if( strcmp(argv[1],"currentversion") == 0 ) currentVersion( argc, argv );
+    if( strcmp(argv[1],"history") == 0 ) history( argc, argv );
+    if( strcmp(argv[1],"rollback") == 0 ) rollback( argc, argv );
 
     // free
     free(configurationFile);
@@ -859,55 +863,6 @@ void removePr( int argc, char** argv ) {
     snprintf(manifestPath,manifestPathLength,"%s/.Manifest",argv[2]);
     // remove entry
     removeEntryFromManifest(manifestPath, argv[3]);
-    // // build path to project folder/manifest
-    // int projectFolderManifestSize = strlen(argv[2])+strlen("/.Manifest")+1;
-    // char* projectFolderManifest = (char*)malloc(projectFolderManifestSize);
-    // memset(projectFolderManifest,'\0',projectFolderManifestSize);
-    // sprintf(projectFolderManifest,"%s%s",argv[2],"/.Manifest");
-    // // build string for tmp manifest
-    // int manifestTmpPathLength = strlen(projectFolderManifest) + strlen(".tmp") + 1;
-    // char* manifestTmpPath = (char*)malloc(manifestTmpPathLength);
-    // sprintf(manifestTmpPath,"%s.tmp",projectFolderManifest);
-    // // check if the old manifest file exists
-    // if( access(projectFolderManifest, F_OK) < 0 ) fatalError(".Manifest does not exist. Make sure there is a project in this directory.");
-    // // read in the old manifest
-    // char* manifestContents = readFile(projectFolderManifest);
-    // // create temporary manifest file
-    // int tempManifestFd = open(manifestTmpPath, O_RDWR | O_CREAT | O_APPEND );
-    // // count lines of old manifest
-    // char* manifestContent = readFile(projectFolderManifest);
-    // int manifestLineCount = lineCount(manifestContent);
-    // free(manifestContent);
-    // // prep for manifest copying
-    // char* savePtrManifest;
-    // char* manifestEntry = strtok_r(manifestContents,"\n",&savePtrManifest);
-    // // write out the version to the temp manifest
-    // writeFileAppend(tempManifestFd,manifestEntry);
-    // // copy entries in the manifest file if they don't match the filename
-    // while( manifestEntry != NULL ) {
-    //     // update manifestEntry
-    //     manifestEntry = strtok(NULL,"\n");
-    //     // tokenize each entry
-    //     char* savePtrManifestEntry;
-    //     char* version = strtok_r(manifestEntry," ",&savePtrManifestEntry);
-    //     char* path = strtok_r(NULL," ",&savePtrManifestEntry);
-    //     char* hash = strtok_r(NULL," ",&savePtrManifestEntry);
-    //     // check for match
-    //     if( strcmp(argv[3],path) != 0 ) // if there is no match, write out
-    //         writeFileAppend(tempManifestFd, manifestEntry);
-    // }
-    // // count lines of new manifest
-    // char* manifestTmpContents = readFile(manifestTmpPath);
-    // int newManifestLineCount = lineCount(manifestTmpContents);
-    // free(manifestTmpContents);
-    // if( manifestLineCount == newManifestLineCount )
-    //     printf("File could not be found in manifest.");
-    // // remove old manifest
-    // remove(projectFolderManifest);
-    // // rename new manifest, moving it to the project directory
-    // rename(manifestTmpPath,projectFolderManifest);
-    // // free
-    // free(manifestContents);
 }
 
 void currentVersion( int argc, char** argv ) {
@@ -923,5 +878,56 @@ void currentVersion( int argc, char** argv ) {
     strcat(tellVersion,argv[2]);
     send(sock,tellVersion,tellVersionSize,0);
     // read response from server
-    printf("WIP!\n");
+    char projectVersion[100];
+    recv(sock, &projectVersion, 100, 0);
+    printf("Project version: %s\n",projectVersion);
+    char received[100] = "done";
+    while( strcmp(received,"done") != 0  ) {
+        recv(sock,received,100,0);
+        if( strcmp(received,"done") != 0 ) {
+            char path[256];
+            recv(sock,path,256,0);
+            printf("File version: %s %s\n", received, path);
+        }
+    }
+}
+
+void history( int argc, char** argv ) {
+    if( argc != 3 ) fatalError("Too few or too many arguments for history! Project name is a required argument.");
+
+    // check if the project exists on the server
+    doesProjectExist(sock, argv[2]);
+
+    // ask for history
+    int historyRequestLength = strlen("history:") + strlen(argv[2]) + 1;
+    char* historyRequest = (char*)malloc(historyRequestLength);
+    memset(historyRequest,'\0',historyRequestLength);
+    sprintf(historyRequest,"history:%s",argv[2]);
+    send(sock,historyRequest,historyRequestLength,0);
+
+    // save history
+    rwFileFromSocket(sock);
+    
+    // print out history
+    char* history = readFile(".History");
+    printf("History for project %s:\n%s\n",argv[2],history);
+
+    // free
+    free( history );
+}
+
+void rollback( int argc, char** argv ) {
+    if( argc != 4 ) fatalError("Too few or too many arguments for rollback! Project name and version are required arguments.");
+
+    // check if the project exists on the server
+    doesProjectExist(sock, argv[2]);
+
+    // send rollback request
+    int rollbackRequestLength = strlen("rollback:") + strlen(argv[2]) + 1;
+    char* rollbackRequest = (char*)malloc(rollbackRequestLength);
+    memset(rollbackRequest,'\0',rollbackRequestLength);
+    sprintf(rollbackRequest,"rollback:%s",argv[2]);
+
+    // tell the server what version
+    send(sock,argv[3],strlen(argv[3])+1,0);
 }
