@@ -183,6 +183,8 @@ void checkout( int argc, char** argv ) {
         send(sock, projectFileName, projectFileNameLength, 0);
         status = rwFileFromSocket(sock);
     } while( status == 0 );
+    // tell server we got all the files
+    send(sock, "all files received", 19,0);
 
     // free
     free(manifest);
@@ -229,7 +231,17 @@ void update( int argc, char** argv ) {
     // open the file for .Update
     int fdUpdate = open(updatePath, O_APPEND | O_CREAT | O_RDWR);
     // check for full success (same .Manifest versions)
-    if( serverManifest[0] == clientManifest[0] ) {
+    // get first line for server manifest
+    char* serverManifestCopy = (char*)malloc(strlen(serverManifest+1));
+    strcpy(serverManifestCopy,serverManifest);
+    char* serverManifestVersion = strtok(serverManifestCopy,"\n");
+    // get first line for local manifest
+    char* clientManifestCopy = (char*)malloc(strlen(clientManifest+1));
+    strcpy(clientManifestCopy,clientManifest);
+    char* clientManifestVersion = strtok(clientManifestCopy,"\n");
+    // compare
+    printf("Client manifest version: %s\tServer manifest version: %s\n",clientManifestVersion,serverManifestVersion);
+    if( strcmp(clientManifestVersion,serverManifestVersion) == 0 ) {
         printf("Server and local manifest have matching versions. There is nothing to update.\n");
         return;
     }
@@ -251,16 +263,15 @@ void update( int argc, char** argv ) {
     char* savePtrServerManifest;
     // throw away the first value because we don't need project version
     // make a copy of the string for strtok to use
-    char* serverManifestCopy = (char*)malloc(strlen(serverManifest)+1);
+    serverManifestCopy = (char*)malloc(strlen(serverManifest)+1);
     strcpy(serverManifestCopy,serverManifest);
+    printf("Tokenizing %s\n",serverManifestCopy);
     char* serverManifestEntry = strtok_r(serverManifestCopy, "\n", &savePtrServerManifest); // 32 bytes for hash, 1 byte for the file version, 2 bytes for spaces, and 100 bytes for file path
     printf("First server manifest entry: %s\n",serverManifestEntry);
     // loop over the entries in the manifest
     int i = 0;
     while( serverManifestEntry != NULL ) {
-        printf("reached\n");
         serverManifestEntry = strtok_r(NULL,"\n",&savePtrServerManifest);
-        printf("reached2\n");
         // tokenize the entry into version, path, hash
         char* savePtrServerManifestEntry;
         serverManifestEntries[i].version = atoi(strtok_r(serverManifestEntry," ",&savePtrServerManifestEntry));
