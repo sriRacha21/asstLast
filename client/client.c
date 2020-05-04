@@ -776,7 +776,7 @@ void push( int argc, char** argv ) {
         commitEntry = strtok_r(NULL,"\n",&savePtrCommitEntry);
     }
     // tell server we are done sending files
-    send(sock,"done",strlen("done")+1,0);
+    send(sock,"done;",strlen("done;")+1,0);
     // get server success
     char maybeSucc[5];
     read(sock,maybeSucc,5);
