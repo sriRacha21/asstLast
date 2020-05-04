@@ -262,14 +262,20 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             strcat(pathName, getVariableData(variableList, "pName"));
             system(pathName);
 
-            //now, untar the specified version's tar and put it here
+            //now, untar the specified version's tar, it puts it into the backups folder.
             pathName[0] = '\0';
-            strcat(pathName, "tar -zxvf ");
+            strcat(pathName, "tar -zxvf backups/");
             strcat(pathName, getVariableData(variableList, "pName"));
             strcat(pathName, "-");
             strcat(pathName, version);
             strcat(pathName, ".tar.gz");
             system(pathName);
+
+            //move it from backups to working
+            pathName[0] = '\0';
+            strcat(pathName, "mv backups/");
+            strcat(pathName, getVariableData(variableList, "pName"));
+            strcat(pathName, " .");
 
             //now go to the backups folder and delete anything with a bigger version number than what was specified.
             struct dirent* dirPointer;
