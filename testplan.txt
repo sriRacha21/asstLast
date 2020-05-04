@@ -1,10 +1,53 @@
-* client side testing
+* Client-side testing
     * configure
-        * Run the server on ilab and connect to it on IP 127.0.0.1
-        * Assume all commands after this still have the server running
+        * Run the server on ilab and connect to it on IP 127.0.0.1.
+        * Assume all commands after this still have the server running.
     * checkout
         * Request a project that doesn't exist on the server.
         * Request a project that does exist on the server.
     * update
-        * Request to update a non-existent project 
-        
+        * Request to update a non-existent project.
+        * Update project when server and local manifest have matching versions.
+        * Update project when server and local manifest have non-matching versions.
+    * upgrade
+        * Upgrade project when the project does not exist locally.
+        * Ran when the server does not have the project.
+        * Ran when there is a .Conflict.
+        * Ran with an empty .Update.
+        * Ran with a non-empty .Update.
+    * commit
+        * Commit when project does not exist locally.
+        * Ran with empty .Update.
+        * Ran with non-empty .Conflict.
+        * Ran with matching server and local Manifests.
+        * Ran with non-matching server and local Manifests.
+    * push
+        * Push with no local project.
+        * Ran when the server does not have the project.
+        * Ran with empty .Commit.
+        * Ran with non-existent .Commit.
+        * Ran with non-existent .Manifest.
+        * Ran with non-empty .Commit.
+    * create
+        * Create with project that already exists.
+        * Ran with project that does not already exist.
+    * destroy
+        * Destroy with project that does not already exist.
+        * Ran with project that does exist.
+    * add 
+        * Add a file that doesn't exist locally.
+        * Ran with a file that does exist locally.
+    * remove
+        * Remove a file that isn't already in the .Manifest.
+        * Ran with a file that is in the .Manifest.
+    * currentversion
+        * Checked current version of a project that doesn't exist on the server.
+        * Ran with project that does exist on server.
+    * history
+        * Checked history of a project that doesn't exist on the server.
+        * Ran with project that does exist on server.
+    * rollback
+        * Rolled back project to negative version.
+        * Ran with version that the server has not reached yet.
+        * Ran with version that the server is already on.
+        * Ran with version that the server is ahead of.

@@ -5,7 +5,11 @@ all: client/client.c server/server.c fileIO.c client/serverRequests.c md5.c mani
 	gcc -o server/WTFserver server/server.c server/requestUtils.c fileIO.c server/exitLeaks.c md5.c manifestControl.c server/LLSort.c -pthread
 
 clean:
-	rm -f client/WTF; rm -f server/WTFserver;
+	rm -f client/WTF
+	rm -f server/WTFserver;
 
 cleanAll:
-	rm -f client/WTF; rm -f server/WTFserver; rm -rf client/testFolder;
+	rm -f client/WTF
+	rm -f server/WTFserver
+	chmod 777 client/testFolder;
+	rm -rf client/testFolder;

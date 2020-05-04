@@ -119,6 +119,7 @@ char* readManifestFromSocket(int sock) {
 }
 
 int rwFileFromSocket(int sock) {
+    if( DEBUG ) printf("Started file checkout.\n");
     // get the size of the file
     char sizeStr[MAXSIZESIZE];
     int cursorPosition = 0;
@@ -148,8 +149,9 @@ int rwFileFromSocket(int sock) {
     do {
         laggingCursorPosition = cursorPosition;
         cursorPosition += read(sock, &filenameStr[cursorPosition], 1);
-    } while( filenameStr[cursorPosition] != DELIM );
+    } while( filenameStr[cursorPosition-1] != DELIM );
     filenameStr[laggingCursorPosition] = '\0';
+    // if( DEBUG ) printf("file name: %s\n",filenameStr);
     // read in the rest of the message
     char* buffer = (char*)malloc(filesize + 1);
     memset(buffer, '\0', filesize+1);
@@ -157,13 +159,44 @@ int rwFileFromSocket(int sock) {
     int bytesRead = 0;
     do {
         bytesRead = read(sock, &buffer[cursorPosition], filesize);
-        if( DEBUG ) printf("Received from server: \"%s\"\n",buffer);
+        // if( DEBUG ) printf("Received from server: \"%s\"\n",buffer);
         cursorPosition += bytesRead;
     } while( bytesRead > 0 && cursorPosition < filesize);
+    // make the folder if it doesn't exist
+    int folderCreateCmdLength = strlen("mkdir -p ") + strlen(filenameStr) + 1;
+    char* folderCreateCmd = (char*)malloc(folderCreateCmdLength);
+    memset(folderCreateCmd,'\0',folderCreateCmdLength);
+    strcat(folderCreateCmd,"mkdir -p ");
+    // copy string for use for strtok
+    char* filenameStrCopy = (char*)malloc(strlen(filenameStr)+1);
+    strcpy(filenameStrCopy,filenameStr);
+    char* folder = strtok(filenameStrCopy,"/");
+    char* laggingFolder = NULL;
+    do {
+        if( laggingFolder != NULL ) {
+            // add a / to the end of that
+            char* folderWithSlash = (char*)malloc(strlen(laggingFolder) + 1  + 1);
+            memset(folderWithSlash,'\0',strlen(laggingFolder) + 1  + 1);
+            strcat(folderWithSlash,laggingFolder);
+            strcat(folderWithSlash,"/");
+            // append it to the string
+            strcat(folderCreateCmd,folderWithSlash);
+            // free
+            free(folderWithSlash);
+        }
+        // set lagging token
+        laggingFolder = (char*)malloc(strlen(folder)+1);
+        strcpy(laggingFolder,folder);
+        // get another token
+        folder = strtok(NULL,"/");
+    } while( folder != NULL );
+    system(folderCreateCmd);
     // write out the file to the path
     writeFile(filenameStr, buffer);
-    // free the buffer
+    // free
     free(buffer);
+    free(filenameStrCopy);
+    free(folderCreateCmd);
     // return success
     return 0;
 }

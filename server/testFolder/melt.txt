@@ -33,3 +33,5 @@ mou aenai chikakute tooi yo
  	mou baibai shinakucha ikenai no?
  	ima sugu watashi wo dakishimete!
      ...nante ne 
+
+This is a new, non-weeb line for .Update :)
