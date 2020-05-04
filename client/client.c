@@ -912,6 +912,9 @@ void history( int argc, char** argv ) {
     char* history = readFile(".History");
     printf("History for project %s:\n%s\n",argv[2],history);
 
+    // remove history
+    remove(".History");
+
     // free
     free( history );
 }
