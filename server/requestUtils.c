@@ -365,6 +365,7 @@ char* getProjectName(char* msg, int prefixLength){
 char* specificFileStringManip(char* msg, int prefixLength, int pathOrProject){ //pathOrProject = 1 for path 0 for project used in "specific project file:<project name"
     int subLength = strlen(msg) - prefixLength;
     char* substring = malloc(sizeof(char) * (subLength+1));
+    memset(substring, '\0', sizeof(char) * (subLength+1));
     strncpy(substring, msg+prefixLength, subLength);
     substring[strlen(substring)] = '\0';
 
@@ -377,6 +378,7 @@ char* specificFileStringManip(char* msg, int prefixLength, int pathOrProject){ /
     else infoLength = subLength - placement;
 
     char* info = malloc(sizeof(char) * (infoLength+1));
+    memset(info, '\0', sizeof(char) * (infoLength+1));
     if(!pathOrProject) strncpy(info, substring, infoLength); //copy project name
     else strncpy(info, substring + placement+1, infoLength-1); //copy path
     info[strlen(info)] = '\0';
