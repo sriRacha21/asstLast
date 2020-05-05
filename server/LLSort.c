@@ -10,11 +10,11 @@
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
-#include "../fileIO.h"
+#include "fileIO.h"
 #include "requestUtils.h"
 #include "exitLeaks.h"
-#include "../manifestControl.h"
-#include "../md5.h"
+#include "manifestControl.h"
+#include "md5.h"
 #include "LLSort.h"
 
 void freeMList(struct manifestNode* head){ //frees linked list
