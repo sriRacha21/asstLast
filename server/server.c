@@ -176,7 +176,8 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             variableList = freeVariable(variableList, "pName");
             printf("Finished verifying existence.\n");
             if(success == 0){
-                printf("Project doesn't exist.\n");
+                printf("Project doesn't exist.  Closing thread...\n");
+                // break;
             }
             else printf("Project exists.\n");
         }

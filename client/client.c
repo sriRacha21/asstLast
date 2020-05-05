@@ -798,12 +798,31 @@ void create( int argc, char** argv ) {
     doesntProjectExist(sock, argv[2]);
     
     // build request string
-    char* createRequest = (char*)malloc(strlen(argv[2]) + strlen("project:") + 1);
+    char* createRequest = (char*)malloc(strlen(argv[2]) + strlen("create:") + 1);
     memset(createRequest,'\0',strlen(createRequest));
-    strcat(createRequest,"project:");
+    strcat(createRequest,"create:");
     strcat(createRequest,argv[2]);
     // send request
     send(sock, createRequest, strlen(createRequest)+1, 0);
+
+    // create folder locally
+    int makeProjectFolderCommandLength = strlen("mkdir ") + strlen(argv[2]) + 1;
+    char* makeProjectFolderCommand = (char*)malloc(makeProjectFolderCommandLength);
+    sprintf(makeProjectFolderCommand,"mkdir %s",argv[2]);
+    system(makeProjectFolderCommand);
+
+    // write manifest to that folder
+    int manifestPathLength = strlen(argv[2]) + strlen("/.Manifest") + 1;
+    char* manifestPath = (char*)malloc(manifestPathLength);
+    sprintf(manifestPath,"%s/.Manifest",argv[2]);
+    writeFile(manifestPath,"0\n");
+
+    // chmod
+    chmod(manifestPath,ARUR);
+    
+    // free
+    free(createRequest);
+    free(makeProjectFolderCommand);
 }
 
 void destroy( int argc, char** argv ) {

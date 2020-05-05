@@ -137,6 +137,8 @@ void createManifest(char* projectName, int versionNum){
     int fd = open(filePath, O_RDWR | O_CREAT | O_APPEND);
     writeFileAppend(fd, "\n");
 
+    // close
+    close(fd);
     //fillManifest(projectName, filePath, versionNum);
     //sortManifest(projectName);
     free(filePath);
