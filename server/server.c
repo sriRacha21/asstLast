@@ -194,7 +194,6 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             system(destructionPath);
             variableList = freeVariable(variableList, "pName");
             printf("Project has been destroyed.  May it rest in peace.\n");
-            send(new_socket, "done", sizeof(char) * strlen("done") + 1, 0);
         }
 
         //given "current version:<project name> by client, retreives and sends project's current version from the active .Manifest"
@@ -202,16 +201,18 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Received \"%s\", fetching and sending...\n", clientMessage);
             prefixLength = 16;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
-            printf("Project name: %s.  Getting version number...\n", getVariableData(variableList, "pName"));
+            printf("Project name: %s.  Sending project state\n", getVariableData(variableList, "pName"));
             /*variableList = insertExit(variableList, createNode("currentVersion", checkVersion(getVariableData(variableList, "pName")), 0));
             printf("Version number: %s.  Sending...\n", getVariableData(variableList, "currentVersion"));
             send(new_socket, getVariableData(variableList, "currentVersion"), strlen(getVariableData(variableList, "currentVersion"))+1, 0);*/
-            checkVersion(getVariableData(variableList, "pName"), new_socket);
-            printf("Sent version number.\n");
-            send(new_socket, "done", strlen("done")+1, 0);
+            //checkVersion(getVariableData(variableList, "pName"), new_socket);
+            variableList = insertExit(variableList, createNode("manifestContents", concatFileSpecs(".Manifest", 
+            getVariableData(variableList, "pName")), 0));
+            send(new_socket, getVariableData(variableList, "manifestContents"), strlen(getVariableData(variableList, "pName"))+1, 0);
+            printf("Sent current version.\n");
 
             variableList = freeVariable(variableList, "pName");
-            variableList = freeVariable(variableList, "currentVersion");
+            variableList = freeVariable(variableList, "manifestContents");
         }
 
         //given "create:<project name>" by client, retrieves project name, creates the folder, and then initializes a .Manifest that holds "0\n" and sends "done" after
@@ -222,7 +223,6 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Project name: %s.  Creating...\n", getVariableData(variableList, "pName"));
             createProjectFolder(getVariableData(variableList, "pName"));
             printf("Project has been created.\n");
-            send(new_socket, "done", sizeof(char) * (strlen("done")+1), 0);
             variableList = freeVariable(variableList, "pName");
         }
 
