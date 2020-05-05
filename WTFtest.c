@@ -10,11 +10,6 @@
 #include <dirent.h>
 #include <errno.h>
 #include <ctype.h>
-#include "exitLeaks.h"
-#include "requestUtils.h"
-#include "fileIO.h"
-#include "manifestControl.h"
-
 
 void* serverRoutine(void* arg);
 void* clientRoutine(void* arg);
@@ -34,31 +29,40 @@ int main(int argc, char** argv){
 }
 
 void* serverRoutine(void* arg){
-    system("server/WTFserver 6969");
+    system("./WTFserver 6969");
 }
 
 void* clientRoutine(void* arg){
-    system("client/WTF configure 127.0.0.1 6969");
-    system("client/WTF create testFolder");
-    system("client/WTF update testFolder");
-    system("client/WTF upgrade testFolder");
-    system("client/WTF add testFolder testFolder/testSub/asunoyo.txt");
-    system("client/WTF add testFolder testFolder/testSub/banotherone.txt");
-    system("client/WTF add testFolder testFolder/testSub/test.c");
-    system("client/WTF add testFolder testFolder/melt.txt");
-    system("client/WTF add testFolder testFolder/somethin.txt");
-    system("client/WTF commit testFolder");
-    system("client/WTF push testFolder");
+    // configure the client
+    system("./WTF configure 127.0.0.1 6969");
+    // create the initial project
+    system("./WTF create testFolder");
+    // write out files to the project, simulating a user adding files to their new project
+    system("echo \"i uckin melted ya\" > client/testFolder/melt.txt ");
+    system("echo \"wow\" > client/testFolder/somethin.txt");
+    system("mkdir client/testFolder/testSub");
+    system("echo -e \"kibun shidai desu boku wa\nsonna boku o oite\nare kara sekai wa kawattatte \" > client/testFolder/testSub/asunoyo.txt");
+    system("echo \"another on\" > client/testFolder/testSub/banotherone.txt");
+    system("echo \"there would be some C code here if I wasn't so lazy\" > client/testFolder/testSub/test.c");
+    system("./WTF update testFolder");
+    system("./WTF upgrade testFolder");
+    system("./WTF add testFolder testFolder/testSub/asunoyo.txt");
+    system("./WTF add testFolder testFolder/testSub/banotherone.txt");
+    system("./WTF add testFolder testFolder/testSub/test.c");
+    system("./WTF add testFolder testFolder/melt.txt");
+    system("./WTF add testFolder testFolder/somethin.txt");
+    system("./WTF commit testFolder");
+    system("./WTF push testFolder");
     //modifying existing client files for another push
     system("echo \"appending this here\" >> client/testFolder/melt.txt");
     system("echo \"overwriting these here thang\" > client/testFolder/testSub/asunoyo.txt");
-    system("client/WTF commit testFolder");
-    system("client/WTF push testFolder");
-    system("client/WTF currentversion testFolder");
-    system("client/WTF history testFolder");
-    system("client/WTF destroy testFolder");
+    system("./WTF commit testFolder");
+    system("./WTF push testFolder");
+    system("./WTF currentversion testFolder");
+    system("./WTF history testFolder");
+    system("./WTF destroy testFolder");
     //delete the file in order to test checkout and rollback
     system("rm -rf client/testFolder");
-    system("client/WTF rollback testFolder 0");
-    system("client/WTF checkout testFolder");
+    system("./WTF rollback testFolder 0");
+    system("./WTF checkout testFolder");
 }

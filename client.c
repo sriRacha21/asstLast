@@ -61,6 +61,8 @@ void doneMain() {
 
 /*  PROGRAM BODY    */
 int main( int argc, char** argv ) {
+    // chdir
+    chdir("client");
     // if we need to configure, configure the file and stop
     if(argc >= 2 && strcmp(argv[1],"configure") == 0) {
         configure(argc, argv);
