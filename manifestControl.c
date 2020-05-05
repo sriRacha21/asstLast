@@ -17,6 +17,7 @@
 #include "manifestControl.h"
 #include "md5.h"
 #include "server/LLSort.h"
+#include "definitions.h"
 
 #define ARUR S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH // (all read user write)
 
@@ -130,7 +131,7 @@ void createManifest(char* projectName, int versionNum){
     remove(filePath); //if it already exists, rebuild it
 
     char version[11] = {0};
-    sprintf(version, "%s", versionNum);
+    sprintf(version, "%d", versionNum);
     version[strlen(version)] = '\0';
 
     writeFile(filePath, version); //create .Manifest in project folder and write the version number at the top of it
@@ -194,7 +195,7 @@ void sortManifest(char* projectName){
     memset(version, '\0', sizeof(char) * (strlen(token)+1));
     strcat(version, token);
     version[strlen(version)] = '\0'; //get version number from first line
-    printf("Re-sorting .Manifest version: %s\n", version);
+    if( DEBUG ) printf("Re-sorting .Manifest version: %s\n", version);
     while(token != NULL){ //get all tokens of manifest
         token = strtok(NULL, "\n");
         if(token == NULL) break;
@@ -203,7 +204,7 @@ void sortManifest(char* projectName){
         strcat(forNode, token);
         forNode[strlen(forNode)] = '\0';
         tokenList = insertManifest(tokenList, createMNode(forNode));
-        free(forNode);
+        // free(forNode);
     }
     int (*comparator)(void*, void*);
     (comparator) = stringCmp;
