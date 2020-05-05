@@ -241,7 +241,7 @@ char* getSpecificFileSpecs(char* projectName, char* filePath){
     fullFileSpecs[strlen(fullFileSpecs)] = '\0';
     if(fileContents == NULL || fullFileSpecs == NULL){
         perror("File read error");
-        exit(EXIT_FAILURE);
+        return "ERRORERROR123SENDHELP";
     }
     free(fileContents);
     free(fileSizeStr);
@@ -288,7 +288,7 @@ char* concatFileSpecs(char* fileName, char* projectName){ //used in manifest:<pr
     fullFileSpecs[strlen(fullFileSpecs)] = '\0';
     if(fileContents == NULL || fullFileSpecs == NULL){
         perror("File read error");
-        exit(EXIT_FAILURE);
+        return;
     }
     free(fileSizeStr);
     free(fileContents);
@@ -327,7 +327,7 @@ char* concatFileSpecsWithPath(char* fileName, char* projectName){ //used in proj
     fullFileSpecs[strlen(fullFileSpecs)] = '\0';
     if(fileContents == NULL || fullFileSpecs == NULL){
         perror("File read error");
-        exit(EXIT_FAILURE);
+        return;
     }
     free(fileSizeStr);
     free(fileContents);
@@ -389,7 +389,7 @@ int projectExists(char* projectName, int socket){//used in "project:<project nam
     DIR* currentDir = opendir("."); //idk if this is right
     if(currentDir == NULL){
         perror("Can't open directory");
-        exit(EXIT_FAILURE);
+        return 0;
     }
     while((dirPointer = readdir(currentDir)) != NULL){
         if(strcmp(projectName, dirPointer->d_name) == 0 && dirPointer->d_type == 4){
