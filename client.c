@@ -14,12 +14,12 @@
 // errors
 #include <errno.h>
 // my own imports
-#include "../definitions.h"
-#include "../fileIO.h"
+#include "definitions.h"
+#include "fileIO.h"
 #include "serverRequests.h"
-#include "../md5.h"
-#include "../manifestControl.h"
-#include "../server/requestUtils.h"
+#include "md5.h"
+#include "manifestControl.h"
+#include "requestUtils.h"
 
 // definitions
 #define FALSE 0
