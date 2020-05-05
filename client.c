@@ -460,8 +460,6 @@ void upgrade( int argc, char** argv ) {
     // check if .Conflict exists, exit if it does
     if( access( conflictPath, F_OK ) >= 0 ) fatalError("A conflict exists in your project. Resolve the conflicts and update.");
     
-    // increment the version number in it
-    incrementManifestVersion(manifestPath);
     // open manifest file for writing
     int manifestFd = open(manifestPath, O_RDWR | O_APPEND);
 
@@ -472,6 +470,8 @@ void upgrade( int argc, char** argv ) {
         printf("Your project is up-to-date.\n");
         return;
     }
+    // increment the version number in it
+    incrementManifestVersion(manifestPath);
     // parse .Update file for entries
     char* savePtrUpdate;
     // copy string for strtok
