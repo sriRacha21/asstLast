@@ -512,14 +512,12 @@ void upgrade( int argc, char** argv ) {
                 // remove the entry
                 int linesRemoved = removeEntryFromManifest(manifestPath, filepath);
                 int manifestFd = open(manifestPath, O_RDWR | O_APPEND);
-                printf("Lines removed: %d\n",linesRemoved);
                 // construct a new entry with incremented version
                 version++;
                 char* newEntry = (char*)malloc(100 + 1 + strlen(filepath) + strlen(liveHash));
                 memset(newEntry,'\0',100 + 1 + strlen(filepath) + strlen(liveHash));
                 sprintf(newEntry,"%d %s %s",version,filepath,liveHash);
                 // add the new one
-                printf("Adding new entry to manifest %s\n",newEntry);
                 writeFileAppend(manifestFd, newEntry);
                 writeFileAppend(manifestFd, "\n");
             }
@@ -668,7 +666,7 @@ void commit( int argc, char** argv ) {
         // calculate live hash of file
         char* clientHexHash = clientManifestEntry.hash;
         char* liveHexHash = convertHash(clientManifestEntry.path);
-        printf("Comparing live hash %s and client hash %s\n",liveHexHash,clientManifestEntry.hash);
+        if( DEBUG ) printf("Comparing server hash %s\tclient hash %s\t and live hash %s\n",serverManifestEntry.hash,clientManifestEntry.hash,liveHexHash);
         // server has files that the client does not
         if( i >= numServerManifestEntries ) {
             // write out delete code
@@ -896,18 +894,22 @@ void currentVersion( int argc, char** argv ) {
     strcat(tellVersion,"current version:");
     strcat(tellVersion,argv[2]);
     send(sock,tellVersion,tellVersionSize,0);
-    // read response from server
-    char projectVersion[100];
-    recv(sock, &projectVersion, 100, 0);
-    printf("Project version: %s\n",projectVersion);
-    char received[100] = "done";
-    while( strcmp(received,"done") != 0  ) {
-        recv(sock,received,100,0);
-        if( strcmp(received,"done") != 0 ) {
-            char path[256];
-            recv(sock,path,256,0);
-            printf("File version: %s %s\n", received, path);
-        }
+    // read manifest from server
+    char* manifestContent = readManifestFromSocket(sock);
+    // for each line in the manifest, print it out
+    char* savePtrManifest;
+    char* manifestVersion = strtok_r(manifestContent,"\n",&savePtrManifest);
+    printf("Project version: %s\n",manifestVersion);
+    char* manifestEntry = strtok_r(NULL,"\n",&savePtrManifest);
+    while( manifestEntry != NULL ) {
+        // tokenize each entry for version and path
+        char* savePtrManifestEntry;
+        char* version = strtok_r(manifestEntry," ",&savePtrManifestEntry);
+        char* path = strtok_r(NULL," ",&savePtrManifestEntry);
+        // print out version + path
+        printf("version: %s\tpath: %s\n", version, path);
+        // move pointer
+        manifestEntry = strtok_r(NULL,"\n",&savePtrManifest);
     }
 }
 
