@@ -364,6 +364,22 @@ void update( int argc, char** argv ) {
             char* serverPath = serverManifestEntries[i].path;
             char* serverHash = serverManifestEntries[i].hash;
 
+            // if the paths don't match then there was an addition AND deletion
+            if( strcmp(clientPath,serverPath) != 0 ) {
+                // write out add to .Update
+                char* toWriteAdd = (char*)malloc(strlen(serverPath) + strlen(serverHash) + 5);
+                sprintf(toWriteAdd, "A %s %s\n",serverPath, serverHash);
+                printf("A %s\n",serverPath);
+                writeFileAppend(fdUpdate, toWriteAdd);
+                // write out deletion to .Update
+                char* toWriteRemove = (char*)malloc(strlen(clientPath) + strlen(clientHash) + 5);
+                sprintf(toWriteRemove, "D %s %s\n",clientPath,clientHash);
+                printf("D %s\n",clientPath);
+                writeFileAppend(fdUpdate, toWriteRemove);
+                // free
+                free( toWriteAdd );
+                free( toWriteRemove );
+            }
             // if a difference is found, and the user did not change the file add a line to .Update (writeFileAppend) and output information to stdout
             // check if there is a difference between the local and server hash
             if( DEBUG ) printf("Comparing for file %s\nserver hash:\t%s\nclient hash:\t%s\n",clientPath,serverHash,clientHash);
@@ -491,6 +507,7 @@ void upgrade( int argc, char** argv ) {
             strcat(projectFileName,":");
             strcat(projectFileName,filepath);
             // send request to server
+            if( DEBUG ) printf("Sending message to server: %s\n",projectFileName);
             send(sock, projectFileName, projectFileNameLength, 0);
             // read the file and output it
             rwFileFromSocket(sock);
@@ -911,6 +928,8 @@ void currentVersion( int argc, char** argv ) {
         // move pointer
         manifestEntry = strtok_r(NULL,"\n",&savePtrManifest);
     }
+    // free
+    free(manifestContent);
 }
 
 void history( int argc, char** argv ) {

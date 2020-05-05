@@ -212,7 +212,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             variableList = insertExit(variableList, createNode("manifestContents", concatFileSpecs(path, 
             getVariableData(variableList, "pName")), 0));
             printf("manifest: %s\n", getVariableData(variableList, "manifestContents"));
-            send(new_socket, getVariableData(variableList, "manifestContents"), strlen(getVariableData(variableList, "pName"))+1, 0);
+            send(new_socket, getVariableData(variableList, "manifestContents"), strlen(getVariableData(variableList, "manifestContents"))+1, 0);
             printf("Sent current version.\n");
 
             variableList = freeVariable(variableList, "pName");
