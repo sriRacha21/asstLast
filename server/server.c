@@ -146,7 +146,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             variableList = freeVariable(variableList, "pName");
             variableList = freeVariable(variableList, "specFilePath");
             printf("Received specs for specific file.  Sending file...\n");
-            send(new_socket, getVariableData(variableList, "fileSpecs"), strlen(getVariableData(variableList, "fileSpecs")), 0);
+            send(new_socket, getVariableData(variableList, "fileSpecs"), strlen(getVariableData(variableList, "fileSpecs")+1), 0);
             variableList = freeVariable(variableList, "fileSpecs");
             printf("Finished sending specs of specific file.\n");
         }
