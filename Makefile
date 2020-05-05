@@ -1,8 +1,8 @@
-all: client/client.c server/server.c fileIO.c client/serverRequests.c md5.c manifestControl.c server/requestUtils.c server/LLSort.c server/exitLeaks.c fileIO.h client/serverRequests.h definitions.h md5.h manifestControl.h server/LLSort.h server/requestUtils.h server/LLSort.h server/exitLeaks.h
+all: client.c server.c fileIO.c serverRequests.c md5.c manifestControl.c requestUtils.c LLSort.c exitLeaks.c fileIO.h serverRequests.h definitions.h md5.h manifestControl.h LLSort.h requestUtils.h LLSort.h exitLeaks.h
 	mkdir -p client > /dev/null 2>&1
 	mkdir -p server > /dev/null 2>&1
-	gcc -o client/WTF client/client.c fileIO.c client/serverRequests.c manifestControl.c md5.c server/requestUtils.c server/LLSort.c server/exitLeaks.c -pthread
-	gcc -o server/WTFserver server/server.c server/requestUtils.c fileIO.c server/exitLeaks.c md5.c manifestControl.c server/LLSort.c -pthread
+	gcc -o client/WTF client.c fileIO.c serverRequests.c manifestControl.c md5.c requestUtils.c LLSort.c exitLeaks.c -pthread
+	gcc -o server/WTFserver server.c requestUtils.c fileIO.c exitLeaks.c md5.c manifestControl.c LLSort.c -pthread
 
 clean:
 	rm -f client/WTF

@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include "../definitions.h"
+#include "definitions.h"
 
 void doesProjectExist( int sock, char* projectName );
 

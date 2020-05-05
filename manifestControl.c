@@ -12,11 +12,11 @@
 #include <limits.h>
 #include <sys/stat.h>
 #include "fileIO.h"
-#include "server/requestUtils.h"
-#include "server/exitLeaks.h"
+#include "requestUtils.h"
+#include "exitLeaks.h"
 #include "manifestControl.h"
 #include "md5.h"
-#include "server/LLSort.h"
+#include "LLSort.h"
 #include "definitions.h"
 
 #define ARUR S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH // (all read user write)

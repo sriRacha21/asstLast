@@ -11,12 +11,12 @@
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
-#include "../fileIO.h"
+#include "fileIO.h"
 #include "requestUtils.h"
-#include "../manifestControl.h"
+#include "manifestControl.h"
 #include "exitLeaks.h"
 #include "LLSort.h"
-#include "../definitions.h"
+#include "definitions.h"
 
 #define ARUR S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH // (all read user write)
 
