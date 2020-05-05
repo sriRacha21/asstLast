@@ -20,7 +20,7 @@
 
 #define ARUR S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH // (all read user write)
 
-int deleteFilesFromPush(char* commitContents){ //returns history number
+int deleteFilesFromPush(char* commitContents){ //returns greatest version number from the commit
     char* commitCopy = malloc(sizeof(char) * (strlen(commitContents) + 1));
     memset(commitCopy, '\0', (strlen(commitContents) + 1));
     strcat(commitCopy, commitContents);
@@ -28,46 +28,43 @@ int deleteFilesFromPush(char* commitContents){ //returns history number
 
     char* token;
     token = strtok(commitCopy, "\n");
-    //get version number from first token first
-    char version[11] = {0};
     int i, j;
-    for(i = 0; i < strlen(token); i++){
-        if(token[i] == ' ') break;
-    }
-    i++;
-    for(j = i; j < strlen(token); j++){
-        if(token[j] == ' ') break;
-    }
-    strncpy(version, token+i, j-i);
-
+    int version = -1;
     //find and delete files to delete
     while(token != NULL){
-        if(token[0] != 'D'){
-            token = strtok(NULL, "\n");
-            continue;
+        if(token[0] == 'D'){
+            //found one that we need to delete, grab filepath and remove it
+            int counter = 0;
+            char filePath[256] = {0}; //this is the one we are erasing from the face of the universe
+            sleep(1);
+            for(i = 0; i < strlen(token); i++){
+                if(token[i] == ' ') counter ++;
+                if(counter == 2) break;
+            }
+            i++;
+            sleep(1);
+            for(j = i; j < strlen(token); j++){
+                if(token[j] == ' ') break;
+            }
+            strncpy(filePath, token+i, j-i);
+            printf("%s\n", filePath);
+            remove(filePath);
         }
-
-        //found one that we need to delete, grab filepath and remove it
-        
-        int counter = 0;
-        char filePath[256] = {0}; //this is the one we are erasing from the face of the universe
+        char versionStr[11] = {0};
         for(i = 0; i < strlen(token); i++){
-            if(token[i] == ' ') counter ++;
-            if(counter == 2) break;
+            if(token[i] == ' ') break;
         }
         i++;
-
         for(j = i; j < strlen(token); j++){
             if(token[j] == ' ') break;
         }
-        strncpy(filePath, token+i, j-i);
-        //printf("%s\n", filePath);
-        remove(filePath);
+        strncpy(versionStr, token+i, j-i);
+        int currentVers = atoi(versionStr);
+        if(currentVers > version) version = currentVers;
         token = strtok(NULL, "\n");
     }
-
     free(commitCopy);
-    return atoi(version);
+    return version;
 }
 
 int rewriteFileFromSocket(int socket){

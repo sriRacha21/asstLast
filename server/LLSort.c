@@ -93,8 +93,31 @@ int insertionSort(void* toSort, int (*comparator)(void*, void*)){
         backTrav = current;
         while(backTrav != NULL){
             if(backTrav->prev != NULL){
-                // if(backTrav->data < backTrav->prev->data){
-                if( comparator(backTrav->data, backTrav->prev->data) < 0 ) {
+                //get the filepaths to compare instead of comparing the whole ass thing
+                char filePath1[256] = {0};
+                char filePath2[256] = {0};
+                int i, j;
+                for(i = 0; i < strlen(backTrav->data); i++){
+                    if(backTrav->data[i] == ' ') break;
+                }
+                i++;
+                for(j = i; j < strlen(backTrav->data); j++){
+                    if(backTrav->data[j] == ' ') break;
+                }
+                strncpy(filePath1, backTrav->data+i, j - i);
+                filePath1[strlen(filePath1)] = '\0';
+
+                for(i = 0; i < strlen(backTrav->prev->data); i++){
+                    if(backTrav->prev->data[i] == ' ') break;
+                }
+                i++;
+                for(j = i; j < strlen(backTrav->prev->data); j++){
+                    if(backTrav->prev->data[j] == ' ') break;
+                }
+                strncpy(filePath2, backTrav->prev->data+i, j-i);
+                filePath2[strlen(filePath2)] = '\0';
+
+                if( comparator(filePath1, filePath2) < 0 ) {
                     char* temp = backTrav->data;
                     backTrav->data = backTrav->prev->data;
                     backTrav->prev->data = temp;

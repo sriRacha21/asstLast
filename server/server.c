@@ -76,17 +76,15 @@ void* clientThread(void* use){ //handles each client thread individually via mul
                 rewriteSuccess = rewriteFileFromSocket(new_socket);
             }
 
-            printf("4\n");
-            //delete all files meant to be deleted, and also return the version number
+            //delete all files meant to be deleted, and also return the version number, which is the highest version number given in the commit
             int newVersion = deleteFilesFromPush(getVariableData(variableList, "commitContents"));
 
             char version[11];
-            sprintf(version, "%s", newVersion);
+            sprintf(version, "%d", newVersion);
             version[strlen(version)] = '\0';
 
-            printf("6\n");
             //tar it to compress (10 points E.C here TAs :) )
-            copyPath[0] = '\0';
+            memset(copyPath, '\0', 256);
             strcat(copyPath, "tar -czvf ");
             strcat(copyPath, getVariableData(variableList, "pName"));
             strcat(copyPath, "-");
@@ -96,7 +94,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             system(copyPath); //tar -czvf <project>-<varsnum>.tar.gz backups/<project>
 
             //move to backups
-            copyPath[0] = '\0';
+            memset(copyPath, '\0', 256);
             strcat(copyPath, "mv ");
             strcat(copyPath, getVariableData(variableList, "pName"));
             strcat(copyPath, "-");
@@ -105,16 +103,15 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             system(copyPath);
 
             //remove the copied non compressed file in backups
-            copyPath[0] = '\0';
+            memset(copyPath, '\0', 256);
             strcat(copyPath, "rm -rf backups/");
             strcat(copyPath, getVariableData(variableList, "pName"));
+            system(copyPath);
 
-            printf("7\n");
             //update manifest
             commitToManifest(getVariableData(variableList, "pName"),
              getVariableData(variableList, "commitContents"), newVersion);
 
-            printf("8\n");
             printf("Received push.\n");
             variableList = freeVariable(variableList, "pName");
             variableList = freeVariable(variableList, "commitContents");
@@ -179,8 +176,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             variableList = freeVariable(variableList, "pName");
             printf("Finished verifying existence.\n");
             if(success == 0){
-                printf("Project doesn't exist.  Closing thread...\n");
-                break;
+                printf("Project doesn't exist.\n");
             }
             else printf("Project exists.\n");
         }

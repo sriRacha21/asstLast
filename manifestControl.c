@@ -42,6 +42,7 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
     //remove manifest if it do be existin already das wild yo
     remove(filePath);
 
+    printf("2\n");
     //go through old manifest and add everything that was there, after topping it with new version number
     createManifest(projectName, newVersion);
     int fd = open(filePath, O_RDWR | O_CREAT | O_APPEND);
@@ -56,6 +57,7 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
         token = strtok(NULL, "\n");
     }
 
+    printf("3\n");
     //now go through commit and make the appropriate changes
     //gonna be repurposing exitNodes for this
     char* token2;
@@ -72,6 +74,7 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
     }
 
 
+    printf("4\n");
     //now we have a linked list of changes and its associated manifest entry by rewriting yet again
     //go thru and make da changes, editing if M, deleting if D, add if 0
     char* manifestSecondCopy = readFile(filePath);
@@ -80,6 +83,7 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
 
     int fd2 = open(filePath, O_RDWR | O_CREAT | O_APPEND);
 
+    printf("5\n");
     char* token3;
     token3 = strtok(manifestSecondCopy, "\n"); //version token again ignore
     token3 = strtok(NULL, "\n");
@@ -196,27 +200,8 @@ void sortManifest(char* projectName){
         memset(forNode, '\0', sizeof(char) * (strlen(token)+1));
         strcat(forNode, token);
         forNode[strlen(forNode)] = '\0';
-
-        //get filepath
-        int i, j;
-        char version[11];
-        char filePath[256];
-        for(i = 0; i < strlen(forNode); i++){
-            if(forNode[i] == ' ')break;
-        }
-        strncpy(version, forNode, i);
-        i++;
-        for(j = i; j < strlen(forNode); j++){
-            if(forNode[j] == ' ') break;
-        }
-        strncpy(filePath, forNode+i, j-i);
+        tokenList = insertManifest(tokenList, createMNode(forNode));
         free(forNode);
-        char* forNode2 = malloc(sizeof(char) * strlen(filePath)+1);
-        memset(forNode2, '\0', strlen(filePath)+1);
-        strcat(forNode2, filePath);
-        forNode2[strlen(forNode2)] = '\0';
-
-        tokenList = insertManifest(tokenList, createMNode(forNode2));
     }
     int (*comparator)(void*, void*);
     (comparator) = stringCmp;
