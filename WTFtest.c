@@ -56,6 +56,7 @@ void* clientRoutine(void* arg){
     //modifying existing client files for another push
     system("echo \"appending this here\" >> client/testFolder/melt.txt");
     system("echo \"overwriting these here thang\" > client/testFolder/testSub/asunoyo.txt");
+    return;
     system("./WTF commit testFolder");
     system("./WTF push testFolder");
     system("./WTF currentversion testFolder");

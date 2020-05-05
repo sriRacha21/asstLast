@@ -688,20 +688,20 @@ void commit( int argc, char** argv ) {
         char* clientHexHash = clientManifestEntry.hash;
         char* liveHexHash = convertHash(clientManifestEntry.path);
         if( DEBUG ) printf("Comparing server hash %s\tclient hash %s\t and live hash %s\n",serverManifestEntry.hash,clientManifestEntry.hash,liveHexHash);
-        // server has files that the client does not
+        // client has files that the server does not
         if( i >= numServerManifestEntries ) {
             // write out delete code
             char* toWrite = (char*)malloc(1 + 1 + 4 + 1 + strlen(clientManifestEntry.path) + 1 + strlen(clientHexHash) + 1);
-            sprintf(toWrite, "D %d %s %s\n",clientManifestEntry.version+1,clientManifestEntry.path,clientHexHash);
-            printf("D %s\n",clientManifestEntry.path);
-            writeFileAppend(commitFd, toWrite);
-            free(toWrite);
-        }
-        else if( i >= numClientManifestEntries ) {
-            // write out add code
-            char* toWrite = (char*)malloc(1 + 1 + 4 + 1 + strlen(clientManifestEntry.path) + 1 + strlen(clientHexHash) + 1);
             sprintf(toWrite, "A %d %s %s\n",clientManifestEntry.version+1,clientManifestEntry.path,clientHexHash);
             printf("A %s\n",clientManifestEntry.path);
+            writeFileAppend(commitFd, toWrite);
+            free(toWrite);
+        // server has files that client does not
+        } else if( i >= numClientManifestEntries ) {
+            // write out add code
+            char* toWrite = (char*)malloc(1 + 1 + 4 + 1 + strlen(clientManifestEntry.path) + 1 + strlen(clientHexHash) + 1);
+            sprintf(toWrite, "D %d %s %s\n",clientManifestEntry.version+1,clientManifestEntry.path,clientHexHash);
+            printf("D %s\n",clientManifestEntry.path);
             writeFileAppend(commitFd, toWrite);
             free(toWrite);
         // compare hashes and write out M if 
@@ -718,7 +718,7 @@ void commit( int argc, char** argv ) {
         // fail if 
         // 1. file in server has different hash than client AND 
         // 2. server has a greater file version than conflict
-        if( strcmp(serverManifestEntry.hash,clientManifestEntry.hash) != 0 && serverManifestEntry.version > clientManifestEntry.version ) {
+        if( serverManifestEntry.hash != NULL && strcmp(serverManifestEntry.hash,clientManifestEntry.hash) != 0 && serverManifestEntry.version > clientManifestEntry.version ) {
             failure = TRUE;
             free(liveHexHash);
             break;
@@ -884,6 +884,8 @@ void add( int argc, char** argv ) {
     sprintf(toWrite,"0 %s %s\n",argv[3],hashTransposed);
     // write string
     writeFileAppend(manifestFd, toWrite);
+    // sort manifest
+    sortManifest(argv[2]);
     // free
     free(hashTransposed);
 }
