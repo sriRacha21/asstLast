@@ -1,4 +1,2 @@
-M testFolder/melt.txt 36e3f25e74058c7b6fc76e12e24d2d00
-M testFolder/testProgram.c 84a95b98fe0128375827e86f0e11be8
-A testFolder/testSub/asunoyo.txt b9bb803bb384806028ffff5844482586
 A testFolder/testSub/test.c e80f5d262474fd3974f03bea8b18feb3
+D testFolder/testSub/anotherone.txt f456075b72cc3860cc0e562f2b89c3e2
