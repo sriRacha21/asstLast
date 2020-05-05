@@ -379,6 +379,8 @@ void update( int argc, char** argv ) {
                 // free
                 free( toWriteAdd );
                 free( toWriteRemove );
+                // continue
+                continue;
             }
             // if a difference is found, and the user did not change the file add a line to .Update (writeFileAppend) and output information to stdout
             // check if there is a difference between the local and server hash
@@ -391,7 +393,7 @@ void update( int argc, char** argv ) {
             if( strcmp(liveHexHash,clientHash) == 0 ) {
                 char* toWrite = (char*)malloc(strlen(serverPath)+strlen(serverHash)+5);
                 sprintf(toWrite, "M %s %s\n", serverPath, serverHash);
-                printf("M %s\n", clientPath);
+                printf("M %s\n", serverPath);
                 writeFileAppend(fdUpdate, toWrite);
                 free(toWrite);
             // if the user did change the file write out to conflict and turn on the conflicting flag
