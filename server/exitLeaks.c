@@ -13,6 +13,11 @@
 #include <errno.h>
 #include "exitLeaks.h"
 
+void catchSigint(int signal){
+    printf("\nCaught SIGINT.  Cleaning up and ending...\n");
+    exit(0);
+}
+
 char* returnMallocCopyOfName(struct exitNode* head, char* token){
     struct exitNode* current = head;
     while(current != NULL){
@@ -128,7 +133,7 @@ void cleanUp(){ //call at atexit
         while(threadCounter < MAX_THREADS) pthread_join(threadID[threadCounter++], NULL);
         threadCounter = 0;
     }
-    printf("Reached atexit().  Server is now shutting down...\n");
+    printf("Server is now shutting down...\n");
 }
 
 /*int main(int argc, char** argv){

@@ -40,5 +40,5 @@ void* serverRoutine(void* arg){
 void* clientRoutine(void* arg){
     system("client/WTF configure 127.0.0.1 6969");
     system("client/WTF create testFolder");
-    system("client/WTF ")
+    //system("client/WTF ")
 }

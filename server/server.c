@@ -24,8 +24,6 @@ void* clientThread(void* use){ //handles each client thread individually via mul
     printf("Thread successfully started for client socket.\n");
     int new_socket = *((int*) use);
 
-    pthread_mutex_lock(&lock); //this entire thread is a critical section screw it
-
     //client operations below, the server will act accordingly to the client's needs based on the message sent from the client.
     while(1){
         int prefixLength; //variable made so getProjectName() can appropriately find the substring of the project name based on client message
@@ -33,7 +31,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
         int valread = read(new_socket, clientMessage, 1024);
         if(valread < 0){
             perror("Read error");
-            exit(EXIT_FAILURE);
+            break;
         }
 
         if(strcmp(clientMessage, "finished") == 0){
@@ -44,6 +42,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         //given a "push:<project name>", receives the commit then all the changed files from the client. makes changes accordingly
         if(strstr(clientMessage, "push:") != NULL){
+            pthread_mutex_lock(&lock);
             printf("Received \"push:<project name>\", pushing commit into history then taking pushed files.\n");
             prefixLength = 5;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
@@ -62,18 +61,25 @@ void* clientThread(void* use){ //handles each client thread individually via mul
                 printf("Error in appending to history.\n");
                 variableList = freeVariable(variableList, "pName");
                 variableList = freeVariable(variableList, "commitContents");
+                pthread_mutex_unlock(&lock);
                 break;
             }
 
             //rewrite all modified/added files
             int rewriteSuccess = 42069;
+            int breakOuter = 0;
             while(rewriteSuccess != -342){
                 if(rewriteSuccess == -5){
                     send(new_socket, "fail", sizeof(char) * strlen("fail"), 0);
                     printf("failure on push\n");
-                    exit(EXIT_FAILURE);
+                    breakOuter = 1;
                 }
+                if(breakOuter == 1) break;
                 rewriteSuccess = rewriteFileFromSocket(new_socket);
+            }
+            if(breakOuter == 1){
+                pthread_mutex_unlock(&lock);
+                break;
             }
 
             //delete all files meant to be deleted, and also return the version number, which is the highest version number given in the commit
@@ -116,6 +122,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             variableList = freeVariable(variableList, "pName");
             variableList = freeVariable(variableList, "commitContents");
             send(new_socket, "succ", sizeof(char) * strlen("succ")+1, 0);
+            pthread_mutex_unlock(&lock);
         }
 
         //given "manifest:<project name>" sends the .manifest of a project as a char*
@@ -184,6 +191,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         //given "destroy:<project name>" by client, destroys project's files and subdirectories and sends "done" when finished
         else if(strstr(clientMessage, "destroy:") != NULL){
+            pthread_mutex_lock(&lock);
             printf("Received \"%s\", destroying project.\n", clientMessage);
             prefixLength = 8;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
@@ -194,6 +202,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             system(destructionPath);
             variableList = freeVariable(variableList, "pName");
             printf("Project has been destroyed.  May it rest in peace.\n");
+            pthread_mutex_unlock(&lock);
         }
 
         //given "current version:<project name> by client, retreives and sends project's current version from the active .Manifest"
@@ -221,6 +230,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
         //given "create:<project name>" by client, retrieves project name, creates the folder, and then initializes a .Manifest that holds "0\n" and sends "done" after
         else if(strstr(clientMessage, "create:") != NULL){
+            pthread_mutex_lock(&lock);
             printf("Received \"%s\", fetching project name and creating directory and initializing .Manifest file.\n", clientMessage);
             prefixLength = 7;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
@@ -228,6 +238,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             createProjectFolder(getVariableData(variableList, "pName"));
             printf("Project has been created.\n");
             variableList = freeVariable(variableList, "pName");
+            pthread_mutex_unlock(&lock);
         }
 
         //given "history:<project name>" by client, retrives and sends the .History file belonging to the project
@@ -243,11 +254,13 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("History has been sent.\n");
             variableList = freeVariable(variableList, "pName");
             variableList = freeVariable(variableList, "historyContents");
+            chdir("..");
         }
 
         //given "rollback:<project name>" sends all the files in the version of that project.
         //<projectname>-<versnum>.tar.gz backups/<projectname>
         else if(strstr(clientMessage, "rollback:") != NULL){
+            pthread_mutex_lock(&lock);
             printf("Received \"%s\", rolling server project to specified version.\n", clientMessage);
             int prefixLength = 9;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
@@ -284,6 +297,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             if(currentDir == NULL){
                 //uh oh
                 printf("Can't open backups");
+                pthread_mutex_unlock(&lock);
                 break;
             }
             int pass3 = -1;
@@ -326,12 +340,12 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             if(!pass3){
                 printf("Couldn't find specified version");
             }
-            printf("Rollback completed.\n");
+            else printf("Rollback completed.\n");
+            pthread_mutex_unlock(&lock);
         }
     }
     
     freeAllMallocs(variableList);
-    pthread_mutex_unlock(&lock);
     printf("Exited new client thread.\n");
     close(new_socket);
     pthread_exit(NULL);
@@ -340,6 +354,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
 
 int main(int argc, char** argv){
     atexit(cleanUp);
+    signal(2, catchSigint);
     variableList = NULL;
     threadCounter = 0;
 

@@ -11,6 +11,7 @@ pthread_t threadID[60];
 int threadCounter;
 //int threadCounter = 0;
 
+void catchSigint(int signal);
 char* returnMallocCopyOfName(struct exitNode* head, char* token);
 int whatDoWithToken(struct exitNode* head, char* token);
 struct exitNode* createNode(char* vName, char* vData, int freeMode);
