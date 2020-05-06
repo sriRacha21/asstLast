@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <sys/socket.h> 
+#include <sys/stat.h>
 #include <netinet/in.h> 
 #include <pthread.h>
 #include <dirent.h>
@@ -46,7 +47,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Received \"push:<project name>\", pushing commit into history then taking pushed files.\n");
             prefixLength = 5;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
-            printf("Project name: %s\n", getVariableData(variableList, "pName"));
+            //printf("Project name: %s\n", getVariableData(variableList, "pName"));
 
             //need to archive old project
             char copyPath[256] = {0};
@@ -130,7 +131,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Received \"%s\", getting project name then sending manifest.\n", clientMessage);
             prefixLength = 9;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
-            printf("Project name: %s\n", getVariableData(variableList, "pName"));
+            //printf("Project name: %s\n", getVariableData(variableList, "pName"));
             chdir(getVariableData(variableList, "pName"));
             variableList = insertExit(variableList, createNode("manifestContents", concatFileSpecs(".Manifest", getVariableData(variableList, "pName")), 1));
             printf("Sending .Manifest data.\n");
@@ -147,7 +148,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             prefixLength = 22;
             variableList = insertExit(variableList, createNode("pName", specificFileStringManip(clientMessage, 22, 0), 1));
             variableList = insertExit(variableList, createNode("specFilePath", specificFileStringManip(clientMessage, 22, 1), 1));
-            printf("Project name: %s. File's filepath: %s.\n", getVariableData(variableList, "pName"), getVariableData(variableList, "specFilePath"));
+            //printf("Project name: %s. File's filepath: %s.\n", getVariableData(variableList, "pName"), getVariableData(variableList, "specFilePath"));
             variableList = insertExit(variableList, createNode("fileSpecs", 
                 getSpecificFileSpecs(getVariableData(variableList, "pName"), getVariableData(variableList, "specFilePath")), 342));
             variableList = freeVariable(variableList, "pName");
@@ -163,7 +164,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Received \"%s\", getting project name then sending all project files.\n", clientMessage);
             prefixLength = 13;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
-            printf("Project name: %s\n", getVariableData(variableList, "pName"));
+            //printf("Project name: %s\n", getVariableData(variableList, "pName"));
             printf("Sending project files...\n");
             sendProjectFiles(getVariableData(variableList, "pName"), new_socket);
             sleep(5); //need to let the recursion finish before sending done
@@ -178,7 +179,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Received \"%s\", getting project name then sending whether or not it exists.\n", clientMessage);
             prefixLength = 8;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
-            printf("Project name: %s\n", getVariableData(variableList, "pName"));
+            //printf("Project name: %s\n", getVariableData(variableList, "pName"));
             int success = projectExists(getVariableData(variableList, "pName"), new_socket); //sends "exists" if project exists and "doesnt" if it doesnt exist
             variableList = freeVariable(variableList, "pName");
             printf("Finished verifying existence.\n");
@@ -196,6 +197,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             prefixLength = 8;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s.  Destroying...\n", getVariableData(variableList, "pName"));
+            chmod(getVariableData(variableList, "pName"), S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
             char destructionPath[256] = {0};
             strcat(destructionPath, "rm -rf ");
             strcat(destructionPath, getVariableData(variableList, "pName"));
@@ -210,7 +212,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             printf("Received \"%s\", fetching and sending...\n", clientMessage);
             prefixLength = 16;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
-            printf("Project name: %s.  Sending project state\n", getVariableData(variableList, "pName"));
+           // printf("Project name: %s.  Sending project state\n", getVariableData(variableList, "pName"));
             /*variableList = insertExit(variableList, createNode("currentVersion", checkVersion(getVariableData(variableList, "pName")), 0));
             printf("Version number: %s.  Sending...\n", getVariableData(variableList, "currentVersion"));
             send(new_socket, getVariableData(variableList, "currentVersion"), strlen(getVariableData(variableList, "currentVersion"))+1, 0);*/
@@ -220,7 +222,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             strcat(path, "/.Manifest");
             variableList = insertExit(variableList, createNode("manifestContents", concatFileSpecs(path, 
             getVariableData(variableList, "pName")), 0));
-            printf("manifest: %s\n", getVariableData(variableList, "manifestContents"));
+            //printf("manifest: %s\n", getVariableData(variableList, "manifestContents"));
             send(new_socket, getVariableData(variableList, "manifestContents"), strlen(getVariableData(variableList, "manifestContents"))+1, 0);
             printf("Sent current version.\n");
 
@@ -250,6 +252,7 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             chdir(getVariableData(variableList, "pName"));
             variableList = insertExit(variableList, createNode("historyContents", concatFileSpecsWithPath(".History", 
                 getVariableData(variableList, "pName")), 0));
+            printf("%s\n", getVariableData(variableList, "historyContents"));
             send(new_socket, getVariableData(variableList, "historyContents"), strlen(getVariableData(variableList, "historyContents")+1), 0);
             printf("History has been sent.\n");
             variableList = freeVariable(variableList, "pName");
