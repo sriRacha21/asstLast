@@ -197,7 +197,12 @@ void* clientThread(void* use){ //handles each client thread individually via mul
             prefixLength = 8;
             variableList = insertExit(variableList, createNode("pName", getProjectName(clientMessage, prefixLength), 1));
             printf("Project name: %s.  Destroying...\n", getVariableData(variableList, "pName"));
-            chmod(getVariableData(variableList, "pName"), S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+            // chmod whole folder
+            char* chmodStr = (char*)malloc(strlen("chmod -R 777 ") + strlen(getVariableData(variableList,"pname")) + 1);
+            sprintf(chmodStr,"chmod -R 777 %s ",getVariableData(variableList,"pName"));
+            system(chmodStr);
+            //
+            // chmod(getVariableData(variableList, "pName"), S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
             char destructionPath[256] = {0};
             strcat(destructionPath, "rm -rf ");
             strcat(destructionPath, getVariableData(variableList, "pName"));

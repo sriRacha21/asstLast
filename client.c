@@ -254,7 +254,7 @@ void update( int argc, char** argv ) {
     strcpy(clientManifestCopy,clientManifest);
     char* clientManifestVersion = strtok(clientManifestCopy,"\n");
     // compare
-    printf("Client manifest version: %s\tServer manifest version: %s\n",clientManifestVersion,serverManifestVersion);
+    if( DEBUG ) printf("Client manifest version: %s\tServer manifest version: %s\n",clientManifestVersion,serverManifestVersion);
     if( strcmp(clientManifestVersion,serverManifestVersion) == 0 ) {
         printf("Server and local manifest have matching versions. There is nothing to update.\n");
         return;

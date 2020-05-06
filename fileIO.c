@@ -29,7 +29,7 @@ void createParentDirectories(char* path){ //takes in a file path and makes the p
         if(path[i] == '/') break;
     }
     strncpy(filePath + strlen(filePath), path, strlen(path) - (strlen(path) - i-1));
-    printf("%s\n", filePath);
+    if( DEBUG ) printf("%s\n", filePath);
     system(filePath);
 }
 

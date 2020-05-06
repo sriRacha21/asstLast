@@ -86,8 +86,10 @@ void* clientRoutine(void* arg){
     system("./WTF history testFolder");
     system("./WTF destroy testFolder");
     //delete the file in order to test checkout and rollback
+    system("chmod -R 777 client/testFolder");
     system("rm -rf client/testFolder");
     system("./WTF rollback testFolder 1");
+    return;
     system("./WTF checkout testFolder");
     system("killall WTFserver");
 }
