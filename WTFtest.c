@@ -59,8 +59,8 @@ void* clientRoutine(void* arg){
     system("./WTF commit testFolder");
     system("./WTF push testFolder");
     system("./WTF currentversion testFolder");
-    return;
     system("./WTF history testFolder");
+    return;
     system("./WTF destroy testFolder");
     //delete the file in order to test checkout and rollback
     system("rm -rf client/testFolder");

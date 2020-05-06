@@ -954,14 +954,20 @@ void history( int argc, char** argv ) {
     // save history
     rwFileFromSocket(sock);
     
+    // build path to history
+    int historyPathLength = strlen(argv[2]) + strlen("/.History") + 1;
+    char* historyPath = (char*)malloc(historyPathLength);
+    sprintf(historyPath,"%s/.History",argv[2]);
     // print out history
-    char* history = readFile(".History");
+    char* history = readFile(historyPath);
     printf("History for project %s:\n%s\n",argv[2],history);
 
     // remove history
-    remove(".History");
+    remove(historyPath);
 
     // free
+    free( historyRequest );
+    free( historyPath );
     free( history );
 }
 
