@@ -43,7 +43,7 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
     //remove manifest if it do be existin already das wild yo
     remove(filePath);
 
-    printf("2\n");
+    printf("Remaking manifest");
     //go through old manifest and add everything that was there, after topping it with new version number
     createManifest(projectName, newVersion);
     int fd = open(filePath, O_RDWR | O_CREAT | O_APPEND);
@@ -58,7 +58,7 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
         token = strtok(NULL, "\n");
     }
 
-    printf("3\n");
+    printf("Making changes based off commit...\n");
     //now go through commit and make the appropriate changes
     //gonna be repurposing exitNodes for this
     char* token2;
@@ -73,9 +73,9 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
         commitList = insertExit(commitList, createNode(data, mode, 0));
         token2 = strtok(NULL, "\n");
     }
+    close(fd);
 
-
-    printf("4\n");
+    printf("Rewriting manifest\n");
     //now we have a linked list of changes and its associated manifest entry by rewriting yet again
     //go thru and make da changes, editing if M, deleting if D, add if 0
     char* manifestSecondCopy = readFile(filePath);
@@ -84,7 +84,7 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
 
     int fd2 = open(filePath, O_RDWR | O_CREAT | O_APPEND);
 
-    printf("5\n");
+    printf("...\n");
     char* token3;
     token3 = strtok(manifestSecondCopy, "\n"); //version token again ignore
     token3 = strtok(NULL, "\n");
@@ -115,6 +115,7 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
         token3 = strtok(NULL, "\n");
     }
 
+    close(fd);
     sortManifest(projectName);
     free(manifestCopy);
     free(commitCopy);

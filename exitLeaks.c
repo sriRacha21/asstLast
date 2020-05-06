@@ -49,10 +49,12 @@ int whatDoWithToken(struct exitNode* head, char* token){
 struct exitNode* createNode(char* vName, char* vData, int freeMode){
     struct exitNode* toReturn = malloc(sizeof(struct exitNode));
     toReturn->variableName = malloc(sizeof(char) * strlen(vName) + 1);
+    memset(toReturn->variableName, '\0', sizeof(char) * strlen(vName) + 1);
     strcpy(toReturn->variableName, vName);
     toReturn->variableName[strlen(toReturn->variableName)] = '\0';
 
     toReturn->variableData = malloc(sizeof(char) * strlen(vData) + 1);
+    memset(toReturn->variableData, '\0', sizeof(char) * strlen(vData) + 1);
     strcpy(toReturn->variableData, vData);
     toReturn->variableData[strlen(toReturn->variableData)] = '\0';
 

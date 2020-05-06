@@ -169,7 +169,7 @@ char* rwCommitToHistory(int socket, char* projectName){ //returns projects new v
     writeFileAppend(fd, "\n");
     writeFileAppend(fd, fileContent);
     writeFileAppend(fd, "\n");
-
+    close(fd);
     return fileContent; //return the commit content
 }
 

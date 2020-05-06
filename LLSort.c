@@ -79,7 +79,9 @@ struct manifestNode* createMNode(char* str){ //createMNodes new manifestNode wit
         printf( "Warning: malloc returned null! Continuing...\n");
     toInsert->next = NULL;
     toInsert->prev = NULL;
-    toInsert->data = str;
+    toInsert->data = malloc(sizeof(char) * strlen(str)+1);
+    strcpy(toInsert->data, str);
+    toInsert->data[strlen(toInsert->data)] = '\0';
     toInsert->index = -1;
     return toInsert;
 }
