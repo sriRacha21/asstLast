@@ -982,7 +982,11 @@ void rollback( int argc, char** argv ) {
     char* rollbackRequest = (char*)malloc(rollbackRequestLength);
     memset(rollbackRequest,'\0',rollbackRequestLength);
     sprintf(rollbackRequest,"rollback:%s",argv[2]);
+    send(sock,rollbackRequest,rollbackRequestLength,0);
 
     // tell the server what version
     send(sock,argv[3],strlen(argv[3])+1,0);
+
+    // free
+    free(rollbackRequest);
 }
