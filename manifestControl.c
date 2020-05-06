@@ -43,7 +43,7 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
     //remove manifest if it do be existin already das wild yo
     remove(filePath);
 
-    printf("Remaking manifest");
+    printf("Remaking manifest\n");
     //go through old manifest and add everything that was there, after topping it with new version number
     createManifest(projectName, newVersion);
     int fd = open(filePath, O_RDWR | O_CREAT | O_APPEND);
@@ -94,8 +94,8 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
 
     char* token3;
     token3 = strtok(manifestSecondCopy, "\n"); //version token again ignore
+    token3 = strtok(NULL, "\n");
     while(token3 != NULL){
-        token3 = strtok(NULL, "\n");
         //find the filepath of the token
         char token3Path[400] = {0};
         int i, j;
@@ -112,14 +112,13 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
         if(whatToDo == -1){ //no change, add it back into the manifest as is
             writeFileAppend(fd2, token3);
             writeFileAppend(fd2, "\n");
-        }
-        else if(whatToDo == 1 || whatToDo == 3){ //changed, add the one from the commit LL
+        } else if(whatToDo == 1 || whatToDo == 3){ //changed, add the one from the commit LL
             char* toAppend = returnMallocCopyOfName(commitList, token3Path);
             writeFileAppend(fd2, toAppend);
             writeFileAppend(fd2, "\n");
             free(toAppend);
         }
-        //token3 = strtok(NULL, "\n");
+        token3 = strtok(NULL, "\n");
     }
 
     close(fd);
