@@ -802,9 +802,26 @@ void push( int argc, char** argv ) {
     if( strcmp(maybeSucc,"fail") == 0 ) {
         printf("Push failed.\n");
     }
+    // get manifest from remote
+    int manifestRequestLength = strlen("manifest:") + strlen(argv[2]) + 1;
+    char* manifestRequest = (char*)malloc(manifestRequestLength);
+    memset(manifestRequest,'\0',manifestRequestLength);
+    strcat(manifestRequest,"manifest:");
+    strcat(manifestRequest,argv[2]);
+    send(sock,manifestRequest,manifestRequestLength,0);
+    // read manifest from socket
+    char* serverManifest = readManifestFromSocket(sock);
+    // build manifest path
+    int manifestPathLength = strlen(argv[2]) + strlen("/.Manifest") + 1;
+    char* manifestPath = (char*)malloc(manifestPathLength);
+    sprintf(manifestPath,"%s/.Manifest",argv[2]);
+    writeFile(manifestPath,serverManifest);
     // remove commit on either response
     remove(commitPath);
     // free
+    free(serverManifest);
+    free(manifestRequest);
+    free(manifestPath);
     free(commitContents);
     free(commitFileSend);
     free(commitPath);

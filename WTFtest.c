@@ -54,13 +54,12 @@ void* clientRoutine(void* arg){
     system("./WTF commit testFolder");
     system("./WTF push testFolder");
     //modifying existing client files for another push
-    system("echo \"appending this here\" >> client/testFolder/melt.txt");
-    system("echo \"overwriting these here thang\" > client/testFolder/testSub/asunoyo.txt");
-    system("./WTF commit testFolder");
-    system("./WTF push testFolder");
+    system("echo \"appending this here\" >> server/testFolder/melt.txt");
+    system("echo \"overwriting these here thang\" > server/testFolder/testSub/asunoyo.txt");
+    system("./WTF update testFolder");
+    system("./WTF upgrade testFolder");
     system("./WTF currentversion testFolder");
     system("./WTF history testFolder");
-    return;
     system("./WTF destroy testFolder");
     //delete the file in order to test checkout and rollback
     system("rm -rf client/testFolder");

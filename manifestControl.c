@@ -118,7 +118,7 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
             writeFileAppend(fd2, "\n");
             free(toAppend);
         }
-        token3 = strtok(NULL, "\n");
+        //token3 = strtok(NULL, "\n");
     }
 
     close(fd);
