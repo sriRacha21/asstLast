@@ -83,12 +83,19 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
     createManifest(projectName, newVersion);
 
     int fd2 = open(filePath, O_RDWR | O_CREAT | O_APPEND);
+    struct exitNode* current = commitList;
+    while(current != NULL){
+        if(current->variableData[0] == 'A') {
+            writeFileAppend(fd2, current->variableName);
+            writeFileAppend(fd2, "\n");
+        }
+        current = current->next;
+    }
 
-    printf("...\n");
     char* token3;
     token3 = strtok(manifestSecondCopy, "\n"); //version token again ignore
-    token3 = strtok(NULL, "\n");
     while(token3 != NULL){
+        token3 = strtok(NULL, "\n");
         //find the filepath of the token
         char token3Path[400] = {0};
         int i, j;
@@ -112,7 +119,7 @@ void commitToManifest(char* projectName, char* commitContents, int newVersion){
             writeFileAppend(fd2, "\n");
             free(toAppend);
         }
-        token3 = strtok(NULL, "\n");
+        //token3 = strtok(NULL, "\n");
     }
 
     close(fd);
